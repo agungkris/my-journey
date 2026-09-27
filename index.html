@@ -1,0 +1,2444 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>My Journey</title>
+<meta name="description" content="Anggaran, KPR, target hidup, dan jadwal mingguan" />
+<meta name="theme-color" content="#173229" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="My Journey" />
+<link rel="manifest" id="manifest-placeholder" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F6F4EE; --card:#FFFFFF; --ink:#173229; --ink-soft:rgba(23,50,41,0.58);
+    --accent:#B8892B; --accent-soft:#F3E7C7; --sage:#DEE6DD; --sage-line:#CBD8CA;
+    --warn:#A85338; --warn-soft:#F3DED5; --good:#3E7A5B; --good-soft:#DCEBE1;
+    --line:#E6E2D6; --radius:16px;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html{-webkit-text-size-adjust:100%;}
+  body{font-family:'Inter',-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;}
+  button,input,select,textarea{font-family:inherit;color:inherit;}
+  .num{font-family:'IBM Plex Mono',monospace;}
+  h1,h2,h3{font-family:'Fraunces',serif;}
+
+  #header{background:var(--ink);padding:calc(env(safe-area-inset-top) + 22px) 20px 18px;color:#F6F4EE;position:relative;overflow:hidden;}
+  #header::after{content:"";position:absolute;right:-40px;top:-60px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(184,137,43,0.20) 0%,transparent 70%);}
+  #header .inner{max-width:1040px;margin:0 auto;position:relative;}
+  #header .eyebrow{font-size:11px;opacity:0.6;letter-spacing:1.5px;text-transform:uppercase;}
+  #header h1{font-size:25px;font-weight:600;margin-top:3px;letter-spacing:-0.2px;}
+  #header .sub{font-size:12.5px;opacity:0.55;margin-top:4px;}
+
+  #tabs{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;}
+  #tabs .inner{display:flex;overflow-x:auto;max-width:1040px;margin:0 auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  #tabs .inner::-webkit-scrollbar{display:none;}
+  .tab-btn{flex:0 0 auto;padding:13px 16px;border:none;background:none;font-weight:600;font-size:12.5px;cursor:pointer;color:#9a9788;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s;}
+  .tab-btn.active{color:var(--ink);border-bottom-color:var(--accent);}
+
+  #content{padding:16px 16px 100px;max-width:560px;margin:0 auto;}
+  #content.wide{max-width:1040px;}
+
+  .card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;border:1px solid var(--line);}
+  .card h3{font-size:14px;font-weight:600;margin-bottom:10px;}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);}
+  .row:last-child{border-bottom:none;}
+  .row .name{font-size:13.5px;flex:1;}
+  .row .val{font-size:13.5px;font-weight:600;}
+  .muted{color:var(--ink-soft);}
+  .small{font-size:11.5px;}
+  .section-gap{margin-top:14px;}
+
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .stat{background:var(--sage);border-radius:12px;padding:12px 14px;}
+  .stat .label{font-size:10.5px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-soft);}
+  .stat .amount{font-size:17px;font-weight:700;margin-top:3px;}
+  .stat.warn{background:var(--warn-soft);}
+  .stat.good{background:var(--good-soft);}
+
+  input[type=text],input[type=number],input[type=date],input[type=time],select,textarea{
+    width:100%;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:16px;background:#fcfbf8;}
+  /* 16px adalah batas aman: di bawah ini iOS Safari memperbesar tampilan
+     otomatis saat kolom disentuh, dan pembesarannya tidak selalu kembali sendiri. */
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent-soft);border-color:var(--accent);}
+  .field-label{font-size:10.5px;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink-soft);margin-bottom:4px;display:block;}
+  .field{margin-bottom:10px;}
+  .field-row{display:flex;gap:8px;}
+  .field-row .field{flex:1;}
+
+  .btn{border:none;border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;}
+  .btn-accent{background:var(--ink);color:#fff;}
+  .btn-ghost{background:var(--sage);color:var(--ink);}
+  .btn-warn{background:var(--warn-soft);color:var(--warn);}
+  .btn-danger{background:var(--warn);color:#fff;}
+  .konf-pesan{font-size:13.5px;line-height:1.55;color:var(--ink-soft);margin-bottom:18px;}
+  .sync-pill{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top) + 8px);
+    background:var(--ink);color:#fff;padding:6px 14px;border-radius:20px;font-size:11.5px;font-weight:600;z-index:120;
+    box-shadow:0 4px 14px rgba(23,50,41,0.25);}
+  .sync-pill.aman{background:var(--good);}
+  .sync-pill.galat{background:var(--warn);}
+  .petunjuk{border-top:1px solid var(--line);padding-top:10px;}
+  .petunjuk summary{font-size:12.5px;font-weight:700;cursor:pointer;color:var(--accent);}
+  .petunjuk ol{margin:10px 0 0 18px;font-size:12.5px;line-height:1.65;color:var(--ink-soft);}
+  .petunjuk li{margin-bottom:7px;}
+  .petunjuk p{font-size:12.5px;color:var(--ink-soft);margin-top:8px;line-height:1.6;}
+  .petunjuk pre{background:#F2F0E8;border-radius:8px;padding:9px;font-size:10px;overflow-x:auto;margin-top:6px;
+    font-family:'IBM Plex Mono',monospace;line-height:1.45;}
+  .petunjuk code{background:#F2F0E8;padding:1px 4px;border-radius:4px;font-size:11px;}
+  .konf-pesan strong{color:var(--ink);}
+  .btn-line{background:#fff;border:1px solid var(--line);color:var(--ink);}
+  .btn-sm{padding:6px 10px;font-size:11.5px;}
+  .btn-full{width:100%;}
+  .icon-btn{background:none;border:none;font-size:15px;cursor:pointer;color:var(--ink-soft);padding:2px 6px;line-height:1;}
+
+  /* roadmap */
+  .roadmap{position:relative;padding-left:22px;}
+  .roadmap::before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:2px;background:var(--sage-line);}
+  .milestone{position:relative;margin-bottom:16px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px;}
+  .milestone::before{content:"";position:absolute;left:-22px;top:16px;width:12px;height:12px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);}
+  .milestone.done::before{background:var(--good);}
+  .milestone-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+  .milestone-title{font-family:'Fraunces',serif;font-size:15.5px;font-weight:600;}
+  .milestone-date{font-size:11px;color:var(--ink-soft);white-space:nowrap;}
+  .progress-track{background:var(--sage);border-radius:6px;height:7px;margin:8px 0 6px;overflow:hidden;}
+  .progress-fill{background:var(--accent);height:100%;border-radius:6px;transition:width .3s;}
+
+  .kpr-tier{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);}
+  .kpr-tier:last-child{border-bottom:none;}
+  .kpr-tier.current{background:var(--accent-soft);margin:0 -16px;padding:10px 16px;border-radius:10px;border-bottom:none;}
+  .tier-label{font-size:13px;font-weight:600;}
+  .tier-sub{font-size:10.5px;color:var(--ink-soft);}
+  .tier-amount{font-size:14px;font-weight:700;}
+
+  /* ---- Jadwal ---- */
+  .weekbar{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;margin-bottom:12px;}
+  .weekbar .label{font-family:'Fraunces',serif;font-size:14.5px;font-weight:600;text-align:center;flex:1;}
+  .weekbar .label span{display:block;font-family:'Inter';font-size:10.5px;font-weight:500;color:var(--ink-soft);}
+  .nav-btn{background:var(--sage);border:none;border-radius:9px;width:34px;height:34px;font-size:15px;cursor:pointer;flex:0 0 auto;}
+  .week-actions{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+
+  .subnav{display:flex;gap:6px;margin-bottom:12px;background:#fff;padding:4px;border-radius:12px;border:1px solid var(--line);}
+  .subnav button{flex:1;border:none;background:none;padding:8px 6px;font-size:12px;font-weight:600;border-radius:9px;cursor:pointer;color:var(--ink-soft);}
+  .subnav button.active{background:var(--ink);color:#fff;}
+
+  .day-grid{display:grid;grid-template-columns:1fr;gap:12px;}
+  .day-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px;}
+  .day-card.today{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);}
+  .day-card.off{background:#FBF9F3;}
+  .day-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;}
+  .day-name{font-family:'Fraunces',serif;font-size:15px;font-weight:600;}
+  .day-date{font-size:11px;color:var(--ink-soft);margin-left:6px;}
+  .day-note-select{width:auto;font-size:16px;padding:4px 6px;border-radius:8px;max-width:112px;}
+  .badge-off{display:inline-block;font-size:10px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;padding:3px 8px;border-radius:20px;background:var(--warn-soft);color:var(--warn);margin-bottom:8px;}
+
+  .cap{margin-bottom:10px;}
+  .cap-track{height:6px;border-radius:6px;background:var(--sage);overflow:hidden;display:flex;}
+  .cap-fill{height:100%;background:var(--good);}
+  .cap-fill.over{background:var(--warn);}
+  .cap-text{font-size:10.5px;color:var(--ink-soft);margin-top:4px;}
+
+  .task{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid var(--line);}
+  .task:last-of-type{border-bottom:none;}
+  .task.done .task-name{text-decoration:line-through;color:var(--ink-soft);}
+  .checkbox{width:19px;height:19px;border-radius:6px;border:1.5px solid var(--sage-line);flex:0 0 auto;margin-top:2px;cursor:pointer;display:flex;align-items:center;justify-content:center;background:#fff;font-size:12px;}
+  .checkbox.checked{background:var(--good);border-color:var(--good);color:#fff;}
+  .task-body{flex:1;min-width:0;}
+  .task-name{font-size:13.5px;line-height:1.35;word-break:break-word;}
+  .task-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;}
+  .chip{font-size:9.5px;font-weight:700;letter-spacing:0.3px;text-transform:uppercase;padding:2px 7px;border-radius:20px;}
+  .time-text{font-size:10.5px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;}
+  .rec-mark{font-size:10px;color:var(--ink-soft);}
+  .task-actions{display:flex;gap:2px;flex:0 0 auto;}
+
+  .goal-row{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--line);}
+  .goal-row:last-of-type{border-bottom:none;}
+  .goal-row.done .goal-text{text-decoration:line-through;color:var(--ink-soft);}
+  .goal-text{flex:1;font-size:13.5px;}
+
+  .empty{text-align:center;padding:18px 10px;color:var(--ink-soft);font-size:12.5px;}
+
+  /* modal */
+  #modal-bg{position:fixed;inset:0;background:rgba(23,50,41,0.45);display:none;align-items:flex-end;justify-content:center;z-index:100;padding:0;}
+  #modal-bg.show{display:flex;}
+  #modal{background:#fff;width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:18px 18px calc(env(safe-area-inset-bottom) + 18px);max-height:92vh;overflow-y:auto;}
+  #modal h3{font-size:17px;margin-bottom:14px;}
+  .modal-actions{display:flex;gap:8px;margin-top:6px;}
+  .modal-actions .btn{flex:1;}
+  .daypick{display:flex;gap:5px;flex-wrap:wrap;}
+  .daypick button{flex:1;min-width:38px;border:1px solid var(--line);background:#fcfbf8;border-radius:8px;padding:7px 2px;font-size:11px;font-weight:600;cursor:pointer;color:var(--ink-soft);}
+  .daypick button.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .dur-hint{font-size:11.5px;color:var(--ink-soft);margin-top:-4px;margin-bottom:10px;}
+
+  .cat-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;display:inline-block;}
+
+  /* ---- Dompet ---- */
+  .total-card{background:var(--ink);color:#F6F4EE;border-radius:var(--radius);padding:16px 18px;margin-bottom:12px;}
+  .total-card .label{font-size:10.5px;opacity:0.55;text-transform:uppercase;letter-spacing:0.8px;}
+  .total-card .amount{font-size:27px;font-weight:700;margin-top:4px;letter-spacing:-0.5px;font-family:'IBM Plex Mono',monospace;}
+  .total-card .count{font-size:11.5px;opacity:0.5;margin-top:3px;}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;}
+  .chip-btn{border:1px solid var(--line);background:#fcfbf8;border-radius:20px;padding:6px 11px;font-size:11.5px;font-weight:600;cursor:pointer;color:var(--ink-soft);}
+  .chip-btn.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .trx{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--line);}
+  .trx:last-of-type{border-bottom:none;}
+  .trx-icon{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px;flex:0 0 auto;}
+  .trx-body{flex:1;min-width:0;}
+  .trx-desc{font-size:13.5px;font-weight:500;word-break:break-word;}
+  .trx-sub{font-size:11px;color:var(--ink-soft);margin-top:2px;}
+  .trx-amt{font-size:13.5px;font-weight:700;font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
+  .date-head{font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.5px;padding:12px 0 2px;}
+  .rekap-item{padding:11px 0;border-bottom:1px solid var(--line);}
+  .rekap-item:last-child{border-bottom:none;}
+  .rekap-top{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .rekap-name{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:7px;}
+  .rekap-amt{font-size:13.5px;font-weight:700;font-family:'IBM Plex Mono',monospace;}
+  .rekap-sub{font-size:11px;color:var(--ink-soft);margin-top:3px;}
+  #fab{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 18px);
+    background:var(--ink);color:#fff;border:none;border-radius:30px;padding:13px 22px;font-size:13.5px;font-weight:600;
+    box-shadow:0 6px 20px rgba(23,50,41,0.28);cursor:pointer;z-index:50;}
+  .periode-wrap{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
+  .periode-chip{display:inline-flex;align-items:center;border:1px solid var(--line);background:#fcfbf8;border-radius:20px;overflow:hidden;}
+  .periode-chip.on{background:var(--accent-soft);border-color:var(--accent);}
+  .periode-apply{border:none;background:none;padding:6px 4px 6px 12px;font-size:11.5px;font-weight:600;cursor:pointer;color:var(--ink);}
+  .periode-x{border:none;background:none;padding:6px 6px;font-size:11px;cursor:pointer;color:var(--ink-soft);}
+  .periode-x:last-child{padding-right:10px;}
+  .rp-wrap{display:flex;align-items:center;border:1px solid var(--line);border-radius:9px;background:#fcfbf8;overflow:hidden;}
+  .rp-wrap:focus-within{outline:2px solid var(--accent-soft);border-color:var(--accent);}
+  .rp-prefix{padding:8px 4px 8px 11px;font-size:13px;font-weight:600;color:var(--ink-soft);}
+  .rp-input{border:none !important;background:transparent !important;font-size:17px !important;font-weight:600;padding:8px 11px 8px 4px !important;}
+  .rp-input:focus{outline:none !important;}
+  /* kalender rentang */
+  .cal-wrap{display:flex;gap:20px;margin-bottom:14px;}
+  .cal-month{flex:1;min-width:0;}
+  .cal-month:nth-child(2){display:none;}
+  .cal-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px;}
+  .cal-title{font-family:'Fraunces',serif;font-size:14.5px;font-weight:600;text-align:center;flex:1;}
+  .cal-nav{width:30px;height:30px;font-size:14px;}
+  .cal-nav-sp{width:30px;height:30px;flex:0 0 auto;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px 0;}
+  .cal-dow{font-size:9.5px;font-weight:700;text-align:center;color:var(--ink-soft);padding:2px 0 6px;text-transform:uppercase;letter-spacing:0.3px;}
+  .cal-cell{position:relative;display:flex;align-items:center;justify-content:center;}
+  .cal-cell.range{background:var(--accent-soft);}
+  .cal-cell.range-start{border-radius:20px 0 0 20px;}
+  .cal-cell.range-end{border-radius:0 20px 20px 0;}
+  .cal-day{width:100%;aspect-ratio:1/1;max-height:38px;border:none;background:none;cursor:pointer;
+    font-size:12.5px;font-weight:500;color:var(--ink);border-radius:50%;display:flex;align-items:center;justify-content:center;}
+  .cal-cell.out .cal-day{color:rgba(23,50,41,0.22);}
+  .cal-day:hover{background:var(--sage);}
+  .cal-day.today{box-shadow:inset 0 0 0 1.5px var(--accent);}
+  .cal-day.edge{background:var(--ink);color:#fff;font-weight:700;}
+  .cal-day.edge:hover{background:var(--ink);}
+  .cal-foot{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .cal-box{flex:1;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:12.5px;font-weight:600;text-align:center;background:#fcfbf8;}
+  .cal-box.aktif{border-color:var(--accent);background:var(--accent-soft);}
+  .cal-dash{color:var(--ink-soft);}
+
+  .range-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;
+    border:1px solid var(--line);background:#fcfbf8;border-radius:9px;padding:11px 13px;cursor:pointer;text-align:left;}
+  .range-text{font-size:13.5px;font-weight:600;color:var(--ink);}
+  .range-edit{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.4px;}
+  .goal-actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;}
+  .goal-actions .btn{flex:0 0 auto;}
+  .goal-actions .btn:nth-child(3){flex:1;}
+  textarea.json-box{min-height:150px;font-family:'IBM Plex Mono',monospace;font-size:16px;resize:vertical;}
+
+  @media (min-width:860px){
+    #content{padding:20px 20px 100px;}
+    .day-grid{grid-template-columns:1fr 1fr;}
+    #modal-bg{align-items:center;padding:20px;}
+    #modal{border-radius:20px;}
+    .cal-month:nth-child(2){display:block;}
+    #modal:has(.cal-wrap){max-width:680px;}
+  }
+  @media (min-width:1200px){ .day-grid{grid-template-columns:1fr 1fr 1fr;} }
+</style>
+</head>
+<body>
+
+<div id="header"><div class="inner">
+  <div class="eyebrow">My Journey</div>
+  <h1 id="header-title">Ringkasan</h1>
+  <div class="sub" id="header-sub">—</div>
+</div></div>
+
+<div id="tabs"><div class="inner">
+  <button class="tab-btn" data-tab="ringkasan" onclick="setTab('ringkasan')">Ringkasan</button>
+  <button class="tab-btn" data-tab="goals" onclick="setTab('goals')">Target</button>
+  <button class="tab-btn" data-tab="kpr" onclick="setTab('kpr')">KPR</button>
+  <button class="tab-btn" data-tab="anggaran" onclick="setTab('anggaran')">Anggaran</button>
+  <button class="tab-btn" data-tab="dompet" onclick="setTab('dompet')">Dompet</button>
+  <button class="tab-btn" data-tab="tugas" onclick="setTab('tugas')">Jadwal</button>
+  <button class="tab-btn" data-tab="data" onclick="setTab('data')">Data</button>
+</div></div>
+
+<div id="content"></div>
+
+<button id="fab" style="display:none" onclick="openTrxModal(null)">＋ Tambah Pengeluaran</button>
+<div id="sync-pill" class="sync-pill" style="display:none"></div>
+
+<div id="modal-bg" onclick="if(event.target===this)closeModal()"><div id="modal"></div></div>
+
+<script>
+/* Kunci penyimpanan sengaja TIDAK diganti walau nama app berubah,
+   supaya data yang sudah ada tetap terbaca. */
+const STORAGE_KEY = "peta-rencana-v1";
+const BACKUP_KEY = "peta-rencana-cadangan-otomatis";
+const APP_VERSION = "2.0";
+const DAY_NAMES = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+const DAY_SHORT = ["Min","Sen","Sel","Rab","Kam","Jum","Sab"];
+const PRIORITIES = {
+  "Critical":{bg:"#8E1B12",fg:"#fff"},
+  "High":{bg:"#F3DED5",fg:"#A02A12"},
+  "Medium":{bg:"#FBEBC0",fg:"#7A5A08"},
+  "Low":{bg:"#D7E7F5",fg:"#1B5480"},
+  "Rutin":{bg:"#ECEAE1",fg:"#6B6A5F"},
+};
+const DAY_NOTE_TYPES = ["Normal","Cuti","Libur","WFH","Sakit","Dinas"];
+const DOMPET_KEY_LAMA = "dompet-saya-v1";
+const TRX_CATS_DEFAULT = [
+  {name:"Kantor",       icon:"🏢", color:"#1A6FA3"},
+  {name:"Jalan-jalan",  icon:"✈️", color:"#E65100"},
+  {name:"Rumah",        icon:"🏠", color:"#283593"},
+  {name:"Makanan",      icon:"🍽️", color:"#6A1B9A"},
+  {name:"Transportasi", icon:"🚗", color:"#2E7D32"},
+  {name:"Belanja",      icon:"🛍️", color:"#880E4F"},
+  {name:"Kesehatan",    icon:"💊", color:"#00695C"},
+  {name:"Hiburan",      icon:"🎬", color:"#F57F17"},
+  {name:"Lainnya",      icon:"💸", color:"#616161"},
+];
+function trxCats(){ return (data && data.trxCats && data.trxCats.length) ? data.trxCats : TRX_CATS_DEFAULT; }
+function trxCatNames(){ return trxCats().map(c=>c.name); }
+function trxCfg(nama){
+  const c = trxCats().find(x=>x.name===nama);
+  if(!c) return {icon:"💸",color:"#616161",dot:"#9E9E9E",bg:"#F2F2F2",text:"#616161"};
+  return {icon:c.icon||"💸",color:c.color,dot:c.color,bg:c.color+"1A",text:c.color};
+}
+function parseRupiah(v){ return Number(String(v==null?"":v).replace(/[^0-9]/g,""))||0; }
+function terbilangSingkat(n){
+  n=Number(n)||0;
+  if(n>=1e9) return (n/1e9).toLocaleString("id-ID",{maximumFractionDigits:2})+" miliar";
+  if(n>=1e6) return (n/1e6).toLocaleString("id-ID",{maximumFractionDigits:2})+" juta";
+  if(n>=1e3) return (n/1e3).toLocaleString("id-ID",{maximumFractionDigits:1})+" ribu";
+  return n.toLocaleString("id-ID");
+}
+
+const DEFAULT_DATA = {
+  budget:{
+    months:{},
+    awal:{
+      income:15800000,
+      items:[
+        {id:"kpr",name:"KPR",amount:7800000},
+        {id:"iphone",name:"iPhone",amount:1000000},
+        {id:"asuransi",name:"Asuransi",amount:650000},
+        {id:"rumah",name:"Rumah",amount:1850000},
+        {id:"ibu",name:"Ibu",amount:500000},
+        {id:"kantor",name:"Kantor",amount:1000000},
+        {id:"amal",name:"Amal",amount:400000},
+        {id:"belanja",name:"Belanja",amount:500000},
+        {id:"tabungan",name:"Balikin Tabungan",amount:500000},
+      ],
+    },
+  },
+  kpr:{
+    startYear:2026,
+    tiers:[
+      {label:"Tahun 1",years:1,amount:7781280},
+      {label:"Tahun 2 - 3",years:2,amount:8817098},
+      {label:"Tahun 4 - 10",years:7,amount:10291571},
+      {label:"Tahun 11 - 15",years:5,amount:10780646},
+    ],
+  },
+  goals:[
+    {id:"kos",name:"Bangun Kos-kosan",target:0,current:0,date:"2027-12-31",note:"Tanah sudah ada, sedang cari tukang"},
+    {id:"haji",name:"DP Haji Plus Ibu",target:0,current:0,date:"2027-12-31",note:"Daftar 2027, berangkat mengikuti antrean travel"},
+    {id:"nikah",name:"Menikah",target:0,current:0,date:"2028-12-31",note:""},
+    {id:"rumah",name:"Rumah (maks 3 M)",target:3000000000,current:0,date:"2028-12-31",note:""},
+    {id:"mobil",name:"Mobil (1,5 M)",target:1500000000,current:0,date:"2028-12-31",note:""},
+    {id:"tabungan",name:"Balikin Tabungan",target:29000000,current:0,date:"",note:"Dicicil dari pos anggaran bulanan"},
+  ],
+  plan:{
+    work:{start:"08:00",end:"17:00",breakStart:"11:30",breakEnd:"13:30",days:[1,2,3,4,5]},
+    categories:[
+      {id:"c-kantor",name:"Kantor",color:"#2F5D50"},
+      {id:"c-personal",name:"Personal",color:"#B8892B"},
+      {id:"c-rumah",name:"Rumah",color:"#8C5A9E"},
+      {id:"c-mimpi",name:"Usaha Mimpi",color:"#A85338"},
+    ],
+    taskCats:[
+      {id:"k-cr",name:"CR",color:"#1A6FA3"},
+      {id:"k-init",name:"Initiative",color:"#6A1B9A"},
+      {id:"k-issue",name:"Issue Prod",color:"#A02A12"},
+    ],
+    recurring:[
+      {id:"r1",name:"Cek seen by nurse & surgery milestone iservice",cat:"c-kantor",prio:"Critical",start:"08:00",end:"09:00",freq:"weekly",days:[1,2,3,4,5],anchor:""},
+      {id:"r2",name:"Daily Meeting",cat:"c-kantor",prio:"Medium",start:"09:00",end:"09:30",freq:"weekly",days:[1,2,3,4,5],anchor:""},
+      {id:"r3",name:"Buffer — tugas dadakan",cat:"c-kantor",prio:"Rutin",start:"09:30",end:"11:30",freq:"weekly",days:[1,2,3,4,5],anchor:""},
+      {id:"r4",name:"Belajar AI / Ideation",cat:"c-mimpi",prio:"Low",start:"13:30",end:"15:30",freq:"weekly",days:[1,2,3,4],anchor:""},
+      {id:"r5",name:"Sholat Ashar",cat:"c-personal",prio:"Rutin",start:"15:30",end:"16:00",freq:"weekly",days:[1,2,3,4,5],anchor:""},
+      {id:"r6",name:"Belajar Bahasa Inggris",cat:"c-mimpi",prio:"Low",start:"16:00",end:"17:00",freq:"weekly",days:[1,2,3,4,5],anchor:""},
+      {id:"r7",name:"Belajar AI / Ideation",cat:"c-mimpi",prio:"Low",start:"13:30",end:"14:30",freq:"weekly",days:[5],anchor:""},
+      {id:"r8",name:"Susun rencana minggu depan",cat:"c-kantor",prio:"High",start:"14:30",end:"15:30",freq:"weekly",days:[5],anchor:""},
+      {id:"r9",name:"Nyuci & gosok baju",cat:"c-rumah",prio:"Rutin",start:"","end":"",freq:"weekly",days:[0],anchor:""},
+      {id:"r10",name:"Bersihin kamar",cat:"c-rumah",prio:"Rutin",start:"",end:"",freq:"weekly",days:[6],anchor:""},
+    ],
+    weeks:{},
+    backlog:[],
+  },
+  dompet:[],
+  trxCats:structuredClone(TRX_CATS_DEFAULT),
+  periode:[],
+  migrasiDompet:false,
+};
+
+let data = load();
+let currentTab = "ringkasan";
+let subView = "jadwal";
+let weekKey = mondayKey(new Date());
+let modalState = null;
+
+/* ---------- storage ---------- */
+function load(){
+  try{
+    const mentah = localStorage.getItem(STORAGE_KEY);
+    if(!mentah) return structuredClone(DEFAULT_DATA);
+    const raw = JSON.parse(mentah);
+    /* Versi app berubah = file baru saja di-update.
+       Simpan salinan apa adanya dulu sebelum struktur disesuaikan. */
+    if(raw.versi !== APP_VERSION){
+      try{
+        localStorage.setItem(BACKUP_KEY, JSON.stringify({
+          waktu:new Date().toISOString(), dariVersi:raw.versi||"?", keVersi:APP_VERSION, isi:mentah
+        }));
+      }catch(e){}
+    }
+    raw.versi = APP_VERSION;
+    if(!raw.plan){
+      raw.plan = structuredClone(DEFAULT_DATA.plan);
+      if(Array.isArray(raw.tasks)){
+        raw.plan.backlog = raw.tasks.filter(t=>!t.done).map(t=>({id:t.id,name:t.text}));
+      }
+    }
+    if(!raw.plan.work) raw.plan.work = structuredClone(DEFAULT_DATA.plan.work);
+    if(!raw.plan.categories) raw.plan.categories = structuredClone(DEFAULT_DATA.plan.categories);
+    if(!raw.plan.recurring) raw.plan.recurring = [];
+    if(!raw.plan.taskCats) raw.plan.taskCats = structuredClone(DEFAULT_DATA.plan.taskCats);
+    if(!raw.plan.weeks) raw.plan.weeks = {};
+    if(!raw.plan.backlog) raw.plan.backlog = [];
+    if(!raw.dompet) raw.dompet = [];
+    if(raw.budget && !raw.budget.months){
+      const lama={income:Number(raw.budget.income)||0,items:raw.budget.items||[]};
+      const n=new Date();
+      const mk=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`;
+      raw.budget={months:{[mk]:lama},awal:structuredClone(lama)};
+    }
+    if(!raw.budget) raw.budget=structuredClone(DEFAULT_DATA.budget);
+    if(!raw.budget.months) raw.budget.months={};
+    if(!raw.budget.awal) raw.budget.awal=structuredClone(DEFAULT_DATA.budget.awal);
+    if(!raw.trxCats || !raw.trxCats.length) raw.trxCats = structuredClone(TRX_CATS_DEFAULT);
+    if(!raw.periode) raw.periode = [];
+    return raw;
+  }catch(e){ return structuredClone(DEFAULT_DATA); }
+}
+
+/* Ambil riwayat dari app Dompet Saya lama (kalau di-deploy di alamat yang sama) */
+function migrasiDompetLama(){
+  if(data.migrasiDompet) return 0;
+  let lama=null;
+  try{ lama = JSON.parse(localStorage.getItem(DOMPET_KEY_LAMA)); }catch(e){ lama=null; }
+  if(!Array.isArray(lama)){ data.migrasiDompet=true; simpanTanpaTanda(); return 0; }
+  const ada = new Set(data.dompet.map(t=>String(t.id)));
+  let n=0;
+  lama.forEach(t=>{
+    if(!t || ada.has(String(t.id))) return;
+    data.dompet.push({id:t.id,tanggal:t.tanggal,keterangan:t.keterangan,jumlah:Number(t.jumlah)||0,kategori:t.kategori||"Lainnya"});
+    n++;
+  });
+  data.migrasiDompet=true;
+  if(n>0) save(); else simpanTanpaTanda();
+  return n;
+}
+function save(){
+  data.diperbarui = Date.now();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  jadwalkanDorong();
+}
+function simpanTanpaTanda(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+
+/* ---------- helpers ---------- */
+const fmt = n => "Rp " + Math.round(n||0).toLocaleString("id-ID");
+const fmtShort = n => {
+  n = Math.round(n||0);
+  if(Math.abs(n)>=1e9) return (n/1e9).toLocaleString("id-ID",{maximumFractionDigits:2})+" M";
+  if(Math.abs(n)>=1e6) return (n/1e6).toLocaleString("id-ID",{maximumFractionDigits:1})+" jt";
+  return fmt(n);
+};
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+function parseDate(s){ return new Date(s+"T00:00:00"); }
+function dateKey(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), dd=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${dd}`;
+}
+function mondayKey(d){
+  const x = new Date(d); x.setHours(0,0,0,0);
+  const wd = x.getDay(); // 0=Sun
+  const diff = wd===0 ? -6 : 1-wd;
+  x.setDate(x.getDate()+diff);
+  return dateKey(x);
+}
+function addDays(key,n){ const d=parseDate(key); d.setDate(d.getDate()+n); return dateKey(d); }
+function weeksBetween(a,b){ return Math.round((parseDate(b)-parseDate(a))/604800000); }
+function fmtDate(s){ return s ? parseDate(s).toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"}) : ""; }
+function fmtDayShort(s){ return parseDate(s).toLocaleDateString("id-ID",{day:"numeric",month:"short"}); }
+function toMin(t){ if(!t) return null; const [h,m]=t.split(":").map(Number); return h*60+m; }
+function durMin(a,b){ const s=toMin(a),e=toMin(b); if(s==null||e==null) return 0; return Math.max(0,e-s); }
+function fmtDur(mins){
+  if(!mins) return "";
+  const h=Math.floor(mins/60), m=mins%60;
+  if(h&&m) return `${h} jam ${m} menit`;
+  if(h) return `${h} jam`;
+  return `${m} menit`;
+}
+function daysUntil(s){ if(!s) return null; const d=parseDate(s); const n=new Date(); n.setHours(0,0,0,0); return Math.round((d-n)/86400000); }
+function sisaWaktu(s){
+  if(!s) return null;
+  const target=parseDate(s); const now=new Date(); now.setHours(0,0,0,0);
+  const hari=Math.round((target-now)/86400000);
+  if(hari<0) return {lewat:true,text:"sudah lewat",hari};
+  if(hari===0) return {lewat:false,text:"hari ini",hari};
+  let y=target.getFullYear()-now.getFullYear();
+  let m=target.getMonth()-now.getMonth();
+  let d=target.getDate()-now.getDate();
+  if(d<0){ m--; d+=new Date(target.getFullYear(),target.getMonth(),0).getDate(); }
+  if(m<0){ m+=12; y--; }
+  const bagian=[];
+  if(y) bagian.push(y+" tahun");
+  if(m) bagian.push(m+" bulan");
+  if(d||!bagian.length) bagian.push(d+" hari");
+  return {lewat:false,text:bagian.join(" "),hari};
+}
+function taskCats(){ return (data.plan.taskCats&&data.plan.taskCats.length)?data.plan.taskCats:[]; }
+function taskCatById(id){ return taskCats().find(c=>c.id===id)||null; }
+function catById(id){ return data.plan.categories.find(c=>c.id===id) || {id:"",name:"Tanpa kategori",color:"#9E9E9E"}; }
+
+/* ---------- budget/kpr helpers ---------- */
+function monthKeyOf(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; }
+function fmtMonth(mk){
+  const [y,m]=mk.split("-").map(Number);
+  return new Date(y,m-1,1).toLocaleDateString("id-ID",{month:"long",year:"numeric"});
+}
+function shiftMonthKey(mk,n){
+  const [y,m]=mk.split("-").map(Number);
+  const d=new Date(y,m-1+n,1);
+  return monthKeyOf(d);
+}
+function getBudget(mk){
+  if(!mk) mk=budgetMonth||monthKeyOf(new Date());
+  const M=data.budget.months;
+  if(!M[mk]){
+    const sebelum=Object.keys(M).filter(k=>k<mk).sort();
+    const src = sebelum.length ? M[sebelum[sebelum.length-1]] : data.budget.awal;
+    M[mk]={income:Number(src.income)||0,items:structuredClone(src.items||[]),warisan:true};
+  }
+  return M[mk];
+}
+function totalOutcome(mk){ return getBudget(mk||monthKeyOf(new Date())).items.reduce((s,i)=>s+Number(i.amount||0),0); }
+function freeUang(mk){ const b=getBudget(mk||monthKeyOf(new Date())); return Number(b.income||0)-totalOutcome(mk); }
+function currentKprInfo(){
+  const elapsed = new Date().getFullYear()-Number(data.kpr.startYear)+1;
+  let acc=0;
+  for(const t of data.kpr.tiers){
+    const from=acc+1,to=acc+t.years;
+    if(elapsed<=to || t===data.kpr.tiers[data.kpr.tiers.length-1]) return {tier:t,tahunKe:Math.max(1,elapsed),from,to};
+    acc=to;
+  }
+  return {tier:data.kpr.tiers[0],tahunKe:1,from:1,to:data.kpr.tiers[0].years};
+}
+function nextKprStep(){
+  const info=currentKprInfo();
+  const idx=data.kpr.tiers.indexOf(info.tier);
+  if(idx<0||idx===data.kpr.tiers.length-1) return null;
+  const next=data.kpr.tiers[idx+1];
+  return {next,yearsLeft:info.to-info.tahunKe+1,delta:next.amount-info.tier.amount};
+}
+
+/* ---------- week model ---------- */
+function getWeek(key){
+  if(!data.plan.weeks[key]) data.plan.weeks[key]={goals:[],tasks:[],dayNotes:{},recDone:{},recSkip:{}};
+  const w=data.plan.weeks[key];
+  w.goals=w.goals||[]; w.tasks=w.tasks||[]; w.dayNotes=w.dayNotes||{}; w.recDone=w.recDone||{}; w.recSkip=w.recSkip||{};
+  return w;
+}
+function ruleActiveOn(rule,dateStr,wkKey){
+  const wd = parseDate(dateStr).getDay();
+  if(!rule.days.includes(wd)) return false;
+  if(rule.freq==="biweekly"){
+    const anchor = rule.anchor || wkKey;
+    return Math.abs(weeksBetween(anchor,wkKey))%2===0;
+  }
+  return true;
+}
+function tasksForDay(wkKey,dateStr){
+  const w=getWeek(wkKey);
+  const out=[];
+  data.plan.recurring.forEach(r=>{
+    if(!ruleActiveOn(r,dateStr,wkKey)) return;
+    const iid = `${r.id}@${dateStr}`;
+    if(w.recSkip[iid]) return;
+    out.push({id:iid,rec:true,ruleId:r.id,name:r.name,cat:r.cat,kat:r.kat||"",prio:r.prio,start:r.start,end:r.end,done:!!w.recDone[iid]});
+  });
+  w.tasks.filter(t=>t.date===dateStr).forEach(t=>out.push({...t,rec:false}));
+  out.sort((a,b)=>{
+    const sa=toMin(a.start), sb=toMin(b.start);
+    if(sa==null&&sb==null) return 0;
+    if(sa==null) return 1;
+    if(sb==null) return -1;
+    return sa-sb;
+  });
+  return out;
+}
+function workCapacity(){
+  const w=data.plan.work;
+  return Math.max(0, durMin(w.start,w.end)-durMin(w.breakStart,w.breakEnd));
+}
+function usedOfficeMin(wkKey,dateStr){
+  return tasksForDay(wkKey,dateStr)
+    .filter(t=>t.cat==="c-kantor" || catById(t.cat).name.toLowerCase()==="kantor")
+    .reduce((s,t)=>s+durMin(t.start,t.end),0);
+}
+
+/* ---------- render shell ---------- */
+function setTab(t){ currentTab=t; render(); window.scrollTo(0,0); }
+function setSub(v){ subView=v; render(); }
+
+function render(){
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===currentTab));
+  const titles={
+    ringkasan:["Ringkasan","Gambaran cepat semua rencana"],
+    dompet:["Dompet","Catatan pengeluaran harian"],
+    anggaran:["Anggaran Bulanan","Income, pos pengeluaran, sisa uang"],
+    kpr:["Jadwal KPR","Cicilan per tahun, 15 tahun"],
+    goals:["Peta Target","2027 - 2040"],
+    tugas:["Jadwal Mingguan","Tugas, rutinitas, dan target minggu ini"],
+    data:["Data","Cadangkan, pindahkan, atau pulihkan"],
+  };
+  document.getElementById("header-title").textContent=titles[currentTab][0];
+  document.getElementById("header-sub").textContent=titles[currentTab][1];
+  const c=document.getElementById("content");
+  c.classList.toggle("wide",currentTab==="tugas");
+  if(currentTab==="ringkasan") c.innerHTML=renderRingkasan();
+  else if(currentTab==="dompet") c.innerHTML=renderDompet();
+  else if(currentTab==="anggaran") c.innerHTML=renderAnggaran();
+  else if(currentTab==="kpr") c.innerHTML=renderKpr();
+  else if(currentTab==="goals") c.innerHTML=renderGoals();
+  else if(currentTab==="data") c.innerHTML=renderDataTab();
+  else c.innerHTML=renderJadwal();
+  const fab=document.getElementById("fab");
+  fab.style.display = currentTab==="dompet" ? "block" : "none";
+}
+
+/* ---------- RINGKASAN ---------- */
+function renderRingkasan(){
+  const mkNow=monthKeyOf(new Date());
+  const b=getBudget(mkNow);
+  const free=freeUang(mkNow), info=currentKprInfo(), step=nextKprStep();
+  const upcoming=data.goals.filter(g=>g.date).map(g=>({...g,s:sisaWaktu(g.date)})).sort((a,b)=>a.s.hari-b.s.hari).slice(0,3);
+  const wk=getWeek(weekKey);
+  let open=0;
+  for(let i=0;i<7;i++){ open+=tasksForDay(weekKey,addDays(weekKey,i)).filter(t=>!t.done).length; }
+  const goalsOpen=wk.goals.filter(g=>!g.done).length;
+  return `
+    <div class="stat-grid">
+      <div class="stat"><div class="label">Income ${fmtMonth(mkNow)}</div><div class="amount num">${fmtShort(b.income)}</div></div>
+      <div class="stat ${free<0?'warn':'good'}"><div class="label">Free Uang</div><div class="amount num">${fmtShort(free)}</div></div>
+    </div>
+    <div class="card section-gap">
+      <h3>KPR — Tahun ke-${info.tahunKe}</h3>
+      <div class="row"><span class="name">Cicilan sekarang</span><span class="val num">${fmt(info.tier.amount)}/bln</span></div>
+      ${step?`<div class="row"><span class="name muted small">Naik jadi ${fmt(step.next.amount)} dalam ~${step.yearsLeft} tahun lagi (+${fmtShort(step.delta)})</span></div>`:`<div class="row"><span class="name muted small">Tier cicilan terakhir</span></div>`}
+    </div>
+    <div class="card">
+      <h3>Target Terdekat</h3>
+      ${upcoming.length?upcoming.map(g=>`
+        <div class="row">
+          <span class="name">${esc(g.name)}<span class="small muted" style="display:block">${fmtDate(g.date)}</span></span>
+          <span class="val small ${g.s.lewat?'muted':''}" style="text-align:right">${g.s.text}${g.s.lewat||g.s.hari<=1?'':`<span class="small muted" style="display:block;font-weight:400">${g.s.hari} hari</span>`}</span>
+        </div>`).join(''):`<div class="small muted">Belum ada tanggal target.</div>`}
+    </div>
+    <div class="card">
+      <h3>Pengeluaran Bulan Ini</h3>
+      <div class="row"><span class="name">Tercatat di Dompet</span><span class="val num">${fmt(pengeluaranBulanIni())}</span></div>
+      <div class="row"><span class="name muted small">Anggaran keluar per bulan ${fmtShort(totalOutcome(mkNow))}</span></div>
+      <button class="btn btn-ghost btn-full section-gap" onclick="setTab('dompet')">Buka dompet →</button>
+    </div>
+    <div class="card">
+      <h3>Minggu Ini</h3>
+      <div class="row"><span class="name">Tugas belum selesai</span><span class="val num">${open}</span></div>
+      <div class="row"><span class="name">Target mingguan belum tercapai</span><span class="val num">${goalsOpen}</span></div>
+      <button class="btn btn-ghost btn-full section-gap" onclick="setTab('tugas')">Buka jadwal →</button>
+    </div>`;
+}
+
+/* ---------- DOMPET ---------- */
+let dompetSub="transaksi";
+let dompetFilter={from:"",to:"",cat:"Semua"};
+
+function filteredTrx(){
+  return data.dompet.filter(t=>{
+    if(dompetFilter.from && t.tanggal < dompetFilter.from) return false;
+    if(dompetFilter.to && t.tanggal > dompetFilter.to) return false;
+    if(dompetFilter.cat!=="Semua" && t.kategori!==dompetFilter.cat) return false;
+    return true;
+  });
+}
+function setDompetSub(v){ dompetSub=v; render(); }
+function setFilter(f,v){ dompetFilter[f]=v; render(); }
+function resetFilter(){ dompetFilter={from:"",to:"",cat:"Semua"}; render(); }
+function filterAktif(){ return dompetFilter.from||dompetFilter.to||dompetFilter.cat!=="Semua"; }
+
+function renderDompet(){
+  const list=filteredTrx();
+  const total=list.reduce((s,t)=>s+Number(t.jumlah||0),0);
+  const chips=["Semua",...trxCatNames()].map(c=>
+    `<button class="chip-btn ${dompetFilter.cat===c?'on':''}" onclick="setFilter('cat','${esc(c)}')">${c==="Semua"?"Semua":trxCfg(c).icon+" "+esc(c)}</button>`).join('');
+
+  const periodeAktif = data.periode.find(p=>p.from===dompetFilter.from && p.to===dompetFilter.to);
+  const periodeChips = data.periode.length ? data.periode.map(p=>`
+      <span class="periode-chip ${periodeAktif&&periodeAktif.id===p.id?'on':''}">
+        <button class="periode-apply" onclick="pakaiPeriode('${p.id}')">${esc(p.name)}</button>
+        <button class="periode-x" onclick="openPeriodeModal('${p.id}')">✎</button>
+        <button class="periode-x" onclick="hapusPeriode('${p.id}')">✕</button>
+      </span>`).join('') : `<span class="small muted">Belum ada periode tersimpan.</span>`;
+
+  const bisaSimpan = dompetFilter.from && dompetFilter.to;
+
+  const head=`
+    <div class="total-card">
+      <div class="label">${periodeAktif?esc(periodeAktif.name):(filterAktif()?'Total (terfilter)':'Total pengeluaran')}</div>
+      <div class="amount">${fmt(total)}</div>
+      <div class="count">${list.length} transaksi</div>
+    </div>
+    <div class="subnav">
+      <button class="${dompetSub==='transaksi'?'active':''}" onclick="setDompetSub('transaksi')">Transaksi</button>
+      <button class="${dompetSub==='rekap'?'active':''}" onclick="setDompetSub('rekap')">Rekap</button>
+      <button class="${dompetSub==='kategori'?'active':''}" onclick="setDompetSub('kategori')">Kategori</button>
+    </div>`;
+
+  if(dompetSub==="kategori") return head+renderTrxKategori();
+
+  const filterCard=`
+    <div class="card">
+      <span class="field-label">Periode tersimpan</span>
+      <div class="periode-wrap">${periodeChips}</div>
+      <span class="field-label section-gap">Rentang tanggal</span>
+      <button class="range-btn" onclick="openRentangModal()">
+        <span class="range-text">${labelRentang()}</span>
+        <span class="range-edit">Ubah</span>
+      </button>
+      ${bisaSimpan?`<button class="btn btn-line btn-sm btn-full section-gap" onclick="openPeriodeModal(null)">＋ Simpan rentang ini sebagai periode</button>`:''}
+      <span class="field-label section-gap">Kategori</span>
+      <div class="chips">${chips}</div>
+      ${filterAktif()?`<button class="btn btn-ghost btn-sm btn-full section-gap" onclick="resetFilter()">Reset filter</button>`:''}
+    </div>`;
+
+  if(dompetSub==="rekap") return head+filterCard+renderRekap(list,total);
+
+  if(!list.length) return head+filterCard+`<div class="card"><div class="empty">${data.dompet.length?'Tidak ada transaksi pada filter ini.':'Belum ada transaksi.'}</div></div>`;
+
+  const byDate={};
+  list.forEach(t=>{ (byDate[t.tanggal]=byDate[t.tanggal]||[]).push(t); });
+  const dates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
+  const body=dates.map(d=>{
+    const dayTotal=byDate[d].reduce((s,t)=>s+Number(t.jumlah||0),0);
+    const rows=byDate[d].map(t=>{
+      const c=trxCfg(t.kategori);
+      return `
+        <div class="trx">
+          <div class="trx-icon" style="background:${c.bg}">${c.icon}</div>
+          <div class="trx-body">
+            <div class="trx-desc">${esc(t.keterangan)}</div>
+            <div class="trx-sub" style="color:${c.text}">${esc(t.kategori)}</div>
+          </div>
+          <div class="trx-amt">${fmt(t.jumlah)}</div>
+          <div class="task-actions">
+            <button class="icon-btn" onclick="openTrxModal('${t.id}')">✎</button>
+            <button class="icon-btn" onclick="askHapusTrx('${t.id}')">✕</button>
+          </div>
+        </div>`;
+    }).join('');
+    return `<div class="date-head">${fmtDate(d)} · ${fmt(dayTotal)}</div><div class="card" style="margin-bottom:0">${rows}</div>`;
+  }).join('');
+  return head+filterCard+body;
+}
+
+/* --- rentang tanggal --- */
+function labelRentang(){
+  const f=dompetFilter.from, t=dompetFilter.to;
+  const o={day:"numeric",month:"short",year:"numeric"};
+  if(!f&&!t) return "Semua tanggal";
+  if(f&&!t) return `Sejak ${parseDate(f).toLocaleDateString("id-ID",o)}`;
+  if(!f&&t) return `Sampai ${parseDate(t).toLocaleDateString("id-ID",o)}`;
+  return `${parseDate(f).toLocaleDateString("id-ID",o)} – ${parseDate(t).toLocaleDateString("id-ID",o)}`;
+}
+let cal={from:"",to:"",month:""};
+function openRentangModal(){
+  modalState={type:'rentang'};
+  cal={from:dompetFilter.from,to:dompetFilter.to,month:(dompetFilter.from||dateKey(new Date())).slice(0,7)};
+  openModal(calHtml());
+}
+function calRefresh(){ document.getElementById("modal").innerHTML=calHtml(); }
+function calShift(n){ cal.month=shiftMonthKey(cal.month,n); calRefresh(); }
+function calPick(d){
+  if(!cal.from || (cal.from && cal.to)){ cal.from=d; cal.to=""; }
+  else if(d<cal.from){ cal.from=d; }
+  else { cal.to=d; }
+  calRefresh();
+}
+function calPreset(jenis){
+  const n=new Date();
+  if(jenis==="bulanIni"){
+    cal.from=dateKey(new Date(n.getFullYear(),n.getMonth(),1));
+    cal.to=dateKey(new Date(n.getFullYear(),n.getMonth()+1,0));
+  }else if(jenis==="bulanLalu"){
+    cal.from=dateKey(new Date(n.getFullYear(),n.getMonth()-1,1));
+    cal.to=dateKey(new Date(n.getFullYear(),n.getMonth(),0));
+  }else if(jenis==="30hari"){
+    const a=new Date(n); a.setDate(a.getDate()-29);
+    cal.from=dateKey(a); cal.to=dateKey(n);
+  }else{ cal.from=""; cal.to=""; }
+  if(cal.from) cal.month=cal.from.slice(0,7);
+  calRefresh();
+}
+function calBulanHtml(mk,tampilPanahKiri,tampilPanahKanan){
+  const [y,m]=mk.split("-").map(Number);
+  const pertama=new Date(y,m-1,1);
+  const geser=(pertama.getDay()+6)%7;              // Senin = 0
+  const jmlHari=new Date(y,m,0).getDate();
+  const hariBulanLalu=new Date(y,m-1,0).getDate();
+  const hariIni=dateKey(new Date());
+  const dow=["Sn","Sl","Rb","Km","Jm","Sb","Mg"].map(d=>`<div class="cal-dow">${d}</div>`).join("");
+
+  let sel="";
+  for(let i=0;i<42;i++){
+    let tgl,luar=false;
+    if(i<geser){ tgl=new Date(y,m-2,hariBulanLalu-geser+i+1); luar=true; }
+    else if(i-geser<jmlHari){ tgl=new Date(y,m-1,i-geser+1); }
+    else { tgl=new Date(y,m,i-geser-jmlHari+1); luar=true; }
+    const k=dateKey(tgl);
+    const isFrom=cal.from&&k===cal.from, isTo=cal.to&&k===cal.to;
+    const dalam=cal.from&&cal.to&&k>cal.from&&k<cal.to;
+    const kelasSel=[
+      dalam?"range":"",
+      isFrom&&cal.to?"range range-start":"",
+      isTo?"range range-end":"",
+      luar?"out":"",
+    ].filter(Boolean).join(" ");
+    const kelasHari=[
+      (isFrom||isTo)?"edge":"",
+      k===hariIni?"today":"",
+    ].filter(Boolean).join(" ");
+    sel+=`<div class="cal-cell ${kelasSel}"><button class="cal-day ${kelasHari}" onclick="calPick('${k}')">${tgl.getDate()}</button></div>`;
+  }
+  return `
+    <div class="cal-month">
+      <div class="cal-head">
+        ${tampilPanahKiri?`<button class="nav-btn cal-nav" onclick="calShift(-1)">‹</button>`:`<span class="cal-nav-sp"></span>`}
+        <div class="cal-title">${fmtMonth(mk)}</div>
+        ${tampilPanahKanan?`<button class="nav-btn cal-nav" onclick="calShift(1)">›</button>`:`<span class="cal-nav-sp"></span>`}
+      </div>
+      <div class="cal-grid">${dow}${sel}</div>
+    </div>`;
+}
+function calHtml(){
+  const o={day:"numeric",month:"short",year:"numeric"};
+  const teksFrom=cal.from?parseDate(cal.from).toLocaleDateString("id-ID",o):"Tanggal awal";
+  const teksTo=cal.to?parseDate(cal.to).toLocaleDateString("id-ID",o):"Tanggal akhir";
+  return `
+    <h3>Rentang Tanggal</h3>
+    <div class="chips" style="margin-bottom:14px">
+      <button class="chip-btn" onclick="calPreset('bulanIni')">Bulan ini</button>
+      <button class="chip-btn" onclick="calPreset('bulanLalu')">Bulan lalu</button>
+      <button class="chip-btn" onclick="calPreset('30hari')">30 hari terakhir</button>
+      <button class="chip-btn" onclick="calPreset('semua')">Semua</button>
+    </div>
+    <div class="cal-wrap">
+      ${calBulanHtml(cal.month,true,false)}
+      ${calBulanHtml(shiftMonthKey(cal.month,1),false,true)}
+    </div>
+    <div class="cal-foot">
+      <div class="cal-box ${cal.from&&!cal.to?'aktif':''}">${teksFrom}</div>
+      <span class="cal-dash">–</span>
+      <div class="cal-box">${teksTo}</div>
+    </div>
+    <div class="small muted" style="text-align:center;margin-bottom:10px">
+      ${!cal.from?"Ketuk tanggal awal.":(!cal.to?"Sekarang ketuk tanggal akhir.":"Ketuk tanggal lain untuk mulai memilih ulang.")}
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button class="btn btn-accent" onclick="terapkanRentang()">Terapkan</button>
+    </div>`;
+}
+function terapkanRentang(){
+  if(cal.from&&!cal.to){ alert("Tanggal akhir belum dipilih."); return; }
+  dompetFilter.from=cal.from; dompetFilter.to=cal.to;
+  closeModal(); render();
+}
+
+/* --- periode tersimpan --- */
+function pakaiPeriode(id){
+  const p=data.periode.find(x=>x.id===id); if(!p) return;
+  dompetFilter.from=p.from; dompetFilter.to=p.to;
+  render();
+}
+function hapusPeriode(id){
+  const p=data.periode.find(x=>x.id===id); if(!p) return;
+  konfirmasi({judul:'Hapus periode tersimpan?',
+    pesan:`<strong>${esc(p.name)}</strong><br><br>Hanya pintasannya yang hilang. Transaksi di rentang ini tetap aman.`},
+    ()=>{ data.periode=data.periode.filter(x=>x.id!==id); save(); render(); });
+}
+function namaPeriodeOtomatis(from,to){
+  const o={day:"numeric",month:"short"};
+  return `${parseDate(from).toLocaleDateString("id-ID",o)} – ${parseDate(to).toLocaleDateString("id-ID",o)}`;
+}
+function openPeriodeModal(id){
+  const p = id ? data.periode.find(x=>x.id===id) : null;
+  modalState={type:'periode',id};
+  const from=p?p.from:dompetFilter.from, to=p?p.to:dompetFilter.to;
+  openModal(`
+    <h3>${p?'Ubah Periode':'Simpan Periode'}</h3>
+    <div class="field"><span class="field-label">Nama periode</span>
+      <input type="text" id="p-nama" value="${p?esc(p.name):esc(namaPeriodeOtomatis(from,to))}" placeholder="Contoh: Gajian Agustus" /></div>
+    <div class="field-row">
+      <div class="field"><span class="field-label">Dari</span><input type="date" id="p-from" value="${from}" /></div>
+      <div class="field"><span class="field-label">Sampai</span><input type="date" id="p-to" value="${to}" /></div>
+    </div>
+    <div class="small muted">Sekali disimpan, cukup ketuk namanya untuk melihat transaksi di rentang itu.</div>
+    <div class="modal-actions section-gap">
+      <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button class="btn btn-accent" onclick="simpanPeriode()">Simpan</button>
+    </div>`);
+}
+function simpanPeriode(){
+  const name=document.getElementById("p-nama").value.trim();
+  const from=document.getElementById("p-from").value;
+  const to=document.getElementById("p-to").value;
+  if(!from||!to){ alert("Tanggal awal dan akhir harus diisi."); return; }
+  if(to<from){ alert("Tanggal akhir tidak boleh lebih awal dari tanggal awal."); return; }
+  const nama=name||namaPeriodeOtomatis(from,to);
+  if(modalState.id){
+    Object.assign(data.periode.find(x=>x.id===modalState.id),{name:nama,from,to});
+  }else{
+    data.periode.push({id:uid('p'),name:nama,from,to});
+  }
+  dompetFilter.from=from; dompetFilter.to=to;
+  save(); closeModal(); render();
+}
+
+/* --- kategori pengeluaran --- */
+function renderTrxKategori(){
+  const rows=trxCats().map(c=>{
+    const dipakai=data.dompet.filter(t=>t.kategori===c.name).length;
+    return `
+      <div class="trx">
+        <div class="trx-icon" style="background:${c.color}1A">${c.icon||"💸"}</div>
+        <div class="trx-body">
+          <div class="trx-desc">${esc(c.name)}</div>
+          <div class="trx-sub">${dipakai} transaksi</div>
+        </div>
+        <div class="task-actions">
+          <button class="icon-btn" onclick="openKatModal('${esc(c.name)}')">✎</button>
+          <button class="icon-btn" onclick="hapusKat('${esc(c.name)}')">✕</button>
+        </div>
+      </div>`;
+  }).join('');
+  return `
+    <div class="card">
+      <h3>Kategori Pengeluaran</h3>
+      <div class="small muted" style="margin-bottom:6px">Ganti nama kategori otomatis memperbarui semua transaksi lama yang memakainya.</div>
+      ${rows}
+      <button class="btn btn-accent btn-full section-gap" onclick="openKatModal(null)">+ Tambah kategori</button>
+    </div>`;
+}
+function openKatModal(nama){
+  const c = nama ? trxCats().find(x=>x.name===nama) : null;
+  modalState={type:'kat',nama};
+  openModal(`
+    <h3>${c?'Ubah Kategori':'Kategori Baru'}</h3>
+    <div class="field"><span class="field-label">Nama</span>
+      <input type="text" id="k-nama" value="${c?esc(c.name):''}" placeholder="Contoh: Kos-kosan" /></div>
+    <div class="field-row">
+      <div class="field" style="max-width:110px"><span class="field-label">Ikon</span>
+        <input type="text" id="k-icon" value="${c?esc(c.icon):'💸'}" maxlength="4" style="text-align:center;font-size:19px" /></div>
+      <div class="field"><span class="field-label">Warna</span>
+        <input type="color" id="k-color" value="${c?c.color:'#616161'}" style="height:38px;padding:3px" /></div>
+    </div>
+    <div class="small muted">Ikon bisa diisi emoji apa pun dari keyboard HP.</div>
+    <div class="modal-actions section-gap">
+      <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button class="btn btn-accent" onclick="simpanKat()">Simpan</button>
+    </div>`);
+}
+function simpanKat(){
+  const nama=document.getElementById("k-nama").value.trim();
+  const icon=document.getElementById("k-icon").value.trim()||"💸";
+  const color=document.getElementById("k-color").value;
+  if(!nama){ alert("Nama kategori belum diisi."); return; }
+  if(!data.trxCats||!data.trxCats.length) data.trxCats=structuredClone(TRX_CATS_DEFAULT);
+  const bentrok=data.trxCats.find(c=>c.name.toLowerCase()===nama.toLowerCase() && c.name!==modalState.nama);
+  if(bentrok){ alert("Sudah ada kategori dengan nama itu."); return; }
+  if(modalState.nama){
+    const c=data.trxCats.find(x=>x.name===modalState.nama);
+    const lama=c.name;
+    Object.assign(c,{name:nama,icon,color});
+    if(lama!==nama){
+      data.dompet.forEach(t=>{ if(t.kategori===lama) t.kategori=nama; });
+      data.periode.forEach(()=>{});
+      if(dompetFilter.cat===lama) dompetFilter.cat=nama;
+    }
+  }else{
+    data.trxCats.push({name:nama,icon,color});
+  }
+  save(); closeModal(); render();
+}
+function hapusKat(nama){
+  if(!data.trxCats||!data.trxCats.length) data.trxCats=structuredClone(TRX_CATS_DEFAULT);
+  if(data.trxCats.length<=1){ alert("Minimal harus ada satu kategori."); return; }
+  const dipakai=data.dompet.filter(t=>t.kategori===nama);
+  const sisa=data.trxCats.filter(c=>c.name!==nama);
+  const tujuan=sisa.find(c=>c.name==="Lainnya")||sisa[0];
+  const pesan = dipakai.length
+    ? `Hapus kategori "${nama}"? ${dipakai.length} transaksi yang memakainya akan dipindahkan ke "${tujuan.name}" (transaksinya tidak hilang).`
+    : `Hapus kategori "${nama}"?`;
+  konfirmasi({judul:'Hapus kategori ini?',pesan},()=>{
+    dipakai.forEach(t=>t.kategori=tujuan.name);
+    data.trxCats=sisa;
+    if(dompetFilter.cat===nama) dompetFilter.cat="Semua";
+    save(); render();
+  });
+}
+
+function renderRekap(list,total){
+  const rekap=trxCatNames().map(k=>({
+    kategori:k,
+    total:list.filter(t=>t.kategori===k).reduce((s,t)=>s+Number(t.jumlah||0),0),
+    count:list.filter(t=>t.kategori===k).length,
+  })).filter(r=>r.total>0).sort((a,b)=>b.total-a.total);
+  if(!rekap.length) return `<div class="card"><div class="empty">Belum ada data untuk direkap.</div></div>`;
+  const rows=rekap.map(r=>{
+    const c=trxCfg(r.kategori);
+    const pct=total?Math.round(r.total/total*100):0;
+    return `
+      <div class="rekap-item">
+        <div class="rekap-top">
+          <div class="rekap-name"><span class="cat-dot" style="background:${c.dot}"></span>${c.icon} ${esc(r.kategori)}</div>
+          <div class="rekap-amt">${fmt(r.total)}</div>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:${pct}%;background:${c.dot}"></div></div>
+        <div class="rekap-sub">${pct}% · ${r.count} transaksi</div>
+      </div>`;
+  }).join('');
+  return `<div class="card"><h3>Rekap per Kategori</h3>${rows}</div>`;
+}
+
+function openTrxModal(id){
+  const t = id ? data.dompet.find(x=>String(x.id)===String(id)) : null;
+  modalState={type:'trx',id};
+  const opts=trxCatNames().map(c=>`<option ${t&&t.kategori===c?'selected':''}>${esc(c)}</option>`).join('');
+  openModal(`
+    <h3>${t?'Ubah Pengeluaran':'Tambah Pengeluaran'}</h3>
+    <div class="field"><span class="field-label">Tanggal</span>
+      <input type="date" id="t-tanggal" value="${t?t.tanggal:dateKey(new Date())}" /></div>
+    <div class="field"><span class="field-label">Keterangan</span>
+      <input type="text" id="t-ket" value="${t?esc(t.keterangan):''}" placeholder="Contoh: Makan siang, Bensin…" /></div>
+    <div class="field" style="margin-bottom:4px"><span class="field-label">Jumlah</span>
+      <div class="rp-wrap">
+        <span class="rp-prefix">Rp</span>
+        <input type="text" id="t-jumlah" class="rp-input num" inputmode="numeric" autocomplete="off"
+               value="${t?Number(t.jumlah).toLocaleString('id-ID'):''}" placeholder="0"
+               oninput="formatRupiahInput(this)" />
+      </div></div>
+    <div class="dur-hint" id="t-hint">${t?terbilangSingkat(t.jumlah):'Ketik angkanya saja, titik pemisah muncul otomatis.'}</div>
+    <div class="field"><span class="field-label">Kategori</span><select id="t-kat">${opts}</select></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button class="btn btn-accent" onclick="simpanTrx()">Simpan</button>
+    </div>`);
+}
+function formatRupiahInput(el){
+  const angka=parseRupiah(el.value);
+  el.value = angka ? angka.toLocaleString("id-ID") : "";
+  const h=document.getElementById("t-hint");
+  if(h) h.textContent = angka ? terbilangSingkat(angka) : "Ketik angkanya saja, titik pemisah muncul otomatis.";
+}
+function simpanTrx(){
+  const tanggal=document.getElementById("t-tanggal").value;
+  const keterangan=document.getElementById("t-ket").value.trim();
+  const jumlah=parseRupiah(document.getElementById("t-jumlah").value);
+  const kategori=document.getElementById("t-kat").value;
+  if(!tanggal){ alert("Tanggal belum diisi."); return; }
+  if(!keterangan){ alert("Keterangan belum diisi."); return; }
+  if(!jumlah||jumlah<=0){ alert("Jumlah harus lebih dari 0."); return; }
+  if(modalState.id){
+    const t=data.dompet.find(x=>String(x.id)===String(modalState.id));
+    Object.assign(t,{tanggal,keterangan,jumlah,kategori});
+  }else{
+    data.dompet.push({id:Date.now(),tanggal,keterangan,jumlah,kategori});
+  }
+  data.dompet.sort((a,b)=>a.tanggal.localeCompare(b.tanggal));
+  save(); closeModal(); render();
+}
+function askHapusTrx(id){
+  const t=data.dompet.find(x=>String(x.id)===String(id));
+  if(!t) return;
+  konfirmasi({judul:'Hapus transaksi ini?',
+    pesan:`<strong>${esc(t.keterangan)}</strong><br>${fmt(t.jumlah)} · ${fmtDate(t.tanggal)}<br><br>Transaksi yang dihapus tidak bisa dikembalikan.`},
+    ()=>{ data.dompet=data.dompet.filter(x=>String(x.id)!==String(id)); save(); render(); });
+}
+function pengeluaranBulan(mk){
+  return data.dompet.filter(t=>String(t.tanggal).startsWith(mk)).reduce((s,t)=>s+Number(t.jumlah||0),0);
+}
+function pengeluaranBulanIni(){ return pengeluaranBulan(monthKeyOf(new Date())); }
+
+/* ---------- DATA ---------- */
+function infoCadanganOtomatis(){
+  try{
+    const b=JSON.parse(localStorage.getItem(BACKUP_KEY));
+    if(!b||!b.isi) return null;
+    const isi=JSON.parse(b.isi);
+    return {waktu:new Date(b.waktu),dariVersi:b.dariVersi,trx:(isi.dompet||[]).length};
+  }catch(e){ return null; }
+}
+function renderDataTab(){
+  const cad=infoCadanganOtomatis();
+  return renderSyncCard()+`
+    <div class="card">
+      <h3>Data Anda Aman Saat Update</h3>
+      <div class="small muted">
+        Isi app disimpan di HP Anda, terpisah dari file app-nya. Mengganti file dengan versi baru
+        (selama alamat situsnya sama) tidak menyentuh data — semua transaksi, anggaran, target, dan jadwal tetap ada.
+        Setiap kali versi berubah, app otomatis membuat satu salinan pengaman lebih dulu.
+      </div>
+      <div class="row section-gap"><span class="name">Versi app</span><span class="val num">${APP_VERSION}</span></div>
+      <div class="row"><span class="name">Salinan pengaman terakhir</span><span class="val small">${cad?cad.waktu.toLocaleString("id-ID",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}):'belum ada'}</span></div>
+      ${cad?`<button class="btn btn-line btn-sm btn-full section-gap" onclick="pulihkanCadanganOtomatis()">Pulihkan salinan pengaman (${cad.trx} transaksi, dari versi ${esc(cad.dariVersi)})</button>`:''}
+    </div>
+
+    <div class="card">
+      <h3>Cadangkan ke Berkas</h3>
+      <div class="small muted" style="margin-bottom:10px">Cara paling aman sebelum update besar atau ganti HP. Berkasnya tersimpan di folder Download.</div>
+      <button class="btn btn-accent btn-full" onclick="unduhCadangan()">Unduh berkas cadangan</button>
+      <input type="file" id="file-restore" accept="application/json,.json" style="display:none" onchange="muatBerkasCadangan(event)" />
+      <button class="btn btn-ghost btn-full section-gap" onclick="document.getElementById('file-restore').click()">Pulihkan dari berkas</button>
+    </div>
+
+    <div class="card">
+      <h3>Salin / Tempel Manual</h3>
+      <div class="small muted" style="margin-bottom:8px">Untuk memindahkan data antar alamat situs. Transaksi akan <strong>digabung</strong> (tidak ada yang hilang); anggaran, KPR, target, dan jadwal diganti oleh isi cadangan.</div>
+      <textarea class="json-box" id="export-box" readonly onclick="this.select()">${esc(JSON.stringify(data))}</textarea>
+      <button class="btn btn-line btn-full section-gap" onclick="salinEkspor()">Salin semua</button>
+      <textarea class="json-box section-gap" id="import-box" placeholder="Tempel teks cadangan di sini…"></textarea>
+      <button class="btn btn-ghost btn-full section-gap" onclick="jalankanImpor()">Impor data</button>
+    </div>
+
+    <div class="card">
+      <h3>Isi Saat Ini</h3>
+      <div class="row"><span class="name">Transaksi dompet</span><span class="val num">${data.dompet.length}</span></div>
+      <div class="row"><span class="name">Bulan anggaran tersimpan</span><span class="val num">${Object.keys(data.budget.months).length}</span></div>
+      <div class="row"><span class="name">Target</span><span class="val num">${data.goals.length}</span></div>
+      <div class="row"><span class="name">Rutinitas</span><span class="val num">${data.plan.recurring.length}</span></div>
+      <div class="row"><span class="name">Minggu tersimpan</span><span class="val num">${Object.keys(data.plan.weeks).length}</span></div>
+    </div>`;
+}
+function unduhCadangan(){
+  try{
+    const isi=JSON.stringify(data);
+    const blob=new Blob([isi],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download=`my-journey-${dateKey(new Date())}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+  }catch(e){ alert("Gagal membuat berkas. Pakai cara salin manual di bawah."); }
+}
+function muatBerkasCadangan(ev){
+  const f=ev.target.files&&ev.target.files[0];
+  if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    const box=document.getElementById("import-box");
+    if(box) box.value=r.result;
+    terapkanImpor(String(r.result));
+    ev.target.value="";
+  };
+  r.onerror=()=>alert("Berkas tidak terbaca.");
+  r.readAsText(f);
+}
+function pulihkanCadanganOtomatis(){
+  const b=JSON.parse(localStorage.getItem(BACKUP_KEY)||"null");
+  if(!b||!b.isi){ alert("Tidak ada salinan pengaman."); return; }
+  konfirmasi({judul:'Pulihkan salinan pengaman?',ya:'Pulihkan',
+    pesan:'Seluruh isi app dikembalikan ke kondisi salinan tersebut. Semua perubahan setelah itu akan hilang.'},
+    ()=>{
+      localStorage.setItem(STORAGE_KEY,b.isi);
+      data=load(); save();
+      alert("Data dikembalikan ke salinan pengaman.");
+      render();
+    });
+}
+function salinEkspor(){
+  const box=document.getElementById("export-box");
+  box.select(); box.setSelectionRange(0,999999);
+  let ok=false;
+  try{ ok=document.execCommand("copy"); }catch(e){}
+  if(navigator.clipboard){ navigator.clipboard.writeText(box.value).then(()=>{},()=>{}); ok=true; }
+  alert(ok?"Data tersalin. Simpan di tempat aman.":"Salin manual: teksnya sudah tersorot, tekan lama lalu pilih Copy.");
+}
+function jalankanImpor(){
+  const raw=document.getElementById("import-box").value.trim();
+  if(!raw){ alert("Belum ada teks yang ditempel."); return; }
+  terapkanImpor(raw);
+}
+function terapkanImpor(raw){
+  let masuk;
+  try{ masuk=JSON.parse(raw); }catch(e){ alert("Teks tidak terbaca. Pastikan tersalin lengkap dari awal { sampai akhir }."); return; }
+  if(typeof masuk!=="object"||masuk===null){ alert("Isi cadangan tidak valid."); return; }
+  const jml=Array.isArray(masuk.dompet)?masuk.dompet.length:0;
+  konfirmasi({judul:'Impor data ini?',aman:true,ya:'Impor',
+    pesan:`<strong>${jml} transaksi</strong> akan digabung dengan yang sudah ada — tidak ada yang hilang.<br><br>Anggaran, KPR, target, dan jadwal akan <strong>diganti</strong> oleh isi cadangan.`},
+    ()=>lanjutkanImpor(masuk));
+}
+function lanjutkanImpor(masuk){
+  try{ localStorage.setItem(BACKUP_KEY,JSON.stringify({waktu:new Date().toISOString(),dariVersi:APP_VERSION,keVersi:APP_VERSION,isi:JSON.stringify(data)})); }catch(e){}
+  if(Array.isArray(masuk.dompet)){
+    const ada=new Set(data.dompet.map(t=>String(t.id)));
+    masuk.dompet.forEach(t=>{ if(t&&!ada.has(String(t.id))) data.dompet.push(t); });
+    data.dompet.sort((a,b)=>String(a.tanggal).localeCompare(String(b.tanggal)));
+  }
+  if(masuk.budget) data.budget=masuk.budget;
+  if(masuk.kpr) data.kpr=masuk.kpr;
+  if(Array.isArray(masuk.goals)) data.goals=masuk.goals;
+  if(masuk.plan) data.plan=masuk.plan;
+  if(Array.isArray(masuk.trxCats)&&masuk.trxCats.length) data.trxCats=masuk.trxCats;
+  if(Array.isArray(masuk.periode)) data.periode=masuk.periode;
+  save();
+  alert("Impor selesai. Kalau hasilnya tidak sesuai, salinan pengaman bisa dipulihkan di kartu paling atas.");
+  render();
+}
+
+/* ---------- ANGGARAN ---------- */
+let budgetMonth = null;
+function shiftBudgetMonth(n){ budgetMonth=shiftMonthKey(budgetMonth||monthKeyOf(new Date()),n); save(); render(); }
+function budgetKeMonthIni(){ budgetMonth=monthKeyOf(new Date()); render(); }
+
+function renderAnggaran(){
+  if(!budgetMonth) budgetMonth=monthKeyOf(new Date());
+  const mk=budgetMonth;
+  const b=getBudget(mk);
+  const iniBulanIni = mk===monthKeyOf(new Date());
+  const rows=b.items.map((it,i)=>`
+    <div class="row">
+      <input type="text" style="max-width:50%" value="${esc(it.name)}" oninput="updateBudgetItem(${i},'name',this.value)" />
+      <div class="rp-wrap" style="max-width:42%">
+        <span class="rp-prefix" style="font-size:11px">Rp</span>
+        <input type="text" class="rp-input num" style="font-size:16px !important;text-align:right" inputmode="numeric"
+               value="${Number(it.amount).toLocaleString('id-ID')}" oninput="updateBudgetAmount(${i},this)" />
+      </div>
+      <button class="icon-btn" onclick="removeBudgetItem(${i})">✕</button>
+    </div>`).join('');
+  const out=totalOutcome(mk), free=freeUang(mk);
+  const terpakai=pengeluaranBulan(mk);
+
+  return `
+    <div class="weekbar">
+      <button class="nav-btn" onclick="shiftBudgetMonth(-1)">‹</button>
+      <div class="label">${fmtMonth(mk)}${iniBulanIni?' <span>Bulan ini</span>':(b.warisan?' <span>disalin dari bulan sebelumnya</span>':'')}</div>
+      <button class="nav-btn" onclick="shiftBudgetMonth(1)">›</button>
+    </div>
+    ${iniBulanIni?'':`<button class="btn btn-line btn-sm btn-full" style="margin-bottom:12px" onclick="budgetKeMonthIni()">Kembali ke bulan ini</button>`}
+
+    <div class="card"><h3>Income ${fmtMonth(mk)}</h3>
+      <div class="rp-wrap">
+        <span class="rp-prefix">Rp</span>
+        <input type="text" class="rp-input num" inputmode="numeric"
+               value="${Number(b.income).toLocaleString('id-ID')}" oninput="updateIncome(this)" />
+      </div>
+      <div class="small muted section-gap">Angka bulan ini saja. Bulan lain bisa diisi berbeda — misalnya bulan THR atau bulan ada bonus.</div>
+    </div>
+
+    <div class="card"><h3>Pos Pengeluaran</h3>${rows}
+      <button class="btn btn-ghost btn-full section-gap" onclick="addBudgetItem()">+ Tambah pos</button>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat"><div class="label">Total Keluar</div><div class="amount num" id="stat-out">${fmtShort(out)}</div></div>
+      <div class="stat ${free<0?'warn':'good'}"><div class="label">Free Uang</div><div class="amount num" id="stat-free">${fmtShort(free)}</div></div>
+    </div>
+
+    <div class="card section-gap">
+      <h3>Rencana vs Kenyataan</h3>
+      <div class="row"><span class="name">Rencana keluar</span><span class="val num">${fmt(out)}</span></div>
+      <div class="row"><span class="name">Tercatat di Dompet</span><span class="val num">${fmt(terpakai)}</span></div>
+      <div class="small muted section-gap">Dompet mencatat pengeluaran harian; angka di sini belum tentu mencakup pos otomatis seperti KPR atau asuransi.</div>
+    </div>`;
+}
+function updateIncome(el){
+  const v=parseRupiah(el.value);
+  el.value = v ? v.toLocaleString("id-ID") : "";
+  const b=getBudget(budgetMonth); b.income=v; delete b.warisan;
+  save(); refreshBudgetStats();
+}
+function updateBudgetItem(i,f,v){
+  const b=getBudget(budgetMonth); b.items[i][f]=v; delete b.warisan; save();
+}
+function updateBudgetAmount(i,el){
+  const v=parseRupiah(el.value);
+  el.value = v ? v.toLocaleString("id-ID") : "";
+  const b=getBudget(budgetMonth); b.items[i].amount=v; delete b.warisan;
+  save(); refreshBudgetStats();
+}
+function refreshBudgetStats(){
+  const o=document.getElementById("stat-out"), f=document.getElementById("stat-free");
+  if(o) o.textContent=fmtShort(totalOutcome(budgetMonth));
+  if(f) f.textContent=fmtShort(freeUang(budgetMonth));
+}
+function addBudgetItem(){
+  const b=getBudget(budgetMonth); b.items.push({id:uid('b'),name:'Pos baru',amount:0}); delete b.warisan; save(); render();
+}
+function removeBudgetItem(i){
+  if(!budgetMonth) budgetMonth=monthKeyOf(new Date());
+  const b=getBudget(budgetMonth); const it=b.items[i]; if(!it) return;
+  konfirmasi({judul:'Hapus pos pengeluaran ini?',
+    pesan:`<strong>${esc(it.name)}</strong> — ${fmt(it.amount)}<br><br>Hanya dihapus dari anggaran ${fmtMonth(budgetMonth)}. Bulan lain tidak terpengaruh.`},
+    ()=>{ const bb=getBudget(budgetMonth); bb.items.splice(i,1); delete bb.warisan; save(); render(); });
+}
+
+/* ---------- KPR ---------- */
+function renderKpr(){
+  const info=currentKprInfo();
+  const tiers=data.kpr.tiers.map(t=>`
+    <div class="kpr-tier ${t===info.tier?'current':''}">
+      <div><div class="tier-label">${esc(t.label)}${t===info.tier?' — sekarang':''}</div><div class="tier-sub">${t.years} tahun</div></div>
+      <div class="tier-amount num">${fmt(t.amount)}</div>
+    </div>`).join('');
+  return `
+    <div class="card"><h3>Mulai KPR</h3>
+      <div class="field"><span class="field-label">Tahun cicilan pertama</span>
+        <input type="number" value="${data.kpr.startYear}" oninput="updateKprStart(this.value)" /></div>
+      <div class="small muted">Dipakai untuk hitung posisi tahun ke berapa.</div>
+    </div>
+    <div class="card"><h3>Tabel Cicilan 15 Tahun</h3>${tiers}</div>
+    <div class="card"><h3>Yang Perlu Diperhatikan</h3>
+      <div class="small muted">Tiap cicilan naik ke tier berikutnya, cek apakah kenaikan gaji 5%/tahun cukup menutupnya. Kalau belum, income kos-kosan perlu sudah jalan sebelum tahun step-up itu tiba.</div>
+    </div>`;
+}
+function updateKprStart(v){ data.kpr.startYear=Number(v)||new Date().getFullYear(); save(); }
+
+/* ---------- TARGET ---------- */
+function renderGoals(){
+  if(!data.goals.length) return `<div class="card"><div class="empty">Belum ada target. Tambahkan yang pertama.</div></div>
+    <button class="btn btn-accent btn-full" onclick="openGoalModal(null)">+ Tambah target</button>`;
+  const items=data.goals.map((g,i)=>{
+    const pct=g.target>0?Math.min(100,Math.round(g.current/g.target*100)):0;
+    const s=g.date?sisaWaktu(g.date):null;
+    return `
+      <div class="milestone ${g.target>0&&g.current>=g.target?'done':''}">
+        <div class="milestone-head">
+          <span class="milestone-title">${esc(g.name)}</span>
+          <span class="milestone-date">${g.date?fmtDate(g.date):'tanpa tanggal'}</span>
+        </div>
+        ${s?`<div class="small ${s.lewat?'muted':''}" style="margin-top:3px">${s.lewat?'Sudah lewat':'Tinggal '+s.text}</div>`:''}
+        ${g.target>0?`
+          <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+          <div class="small muted">${fmt(g.current)} dari ${fmt(g.target)} · ${pct}% · sisa ${fmtShort(Math.max(0,g.target-g.current))}</div>
+        `:`<div class="small muted section-gap">Target biaya belum diisi.</div>`}
+        ${g.note?`<div class="small muted" style="margin-top:6px">${esc(g.note)}</div>`:''}
+        <div class="goal-actions">
+          <button class="btn btn-line btn-sm" onclick="moveGoal(${i},-1)" ${i===0?'disabled style="opacity:.35"':''}>↑</button>
+          <button class="btn btn-line btn-sm" onclick="moveGoal(${i},1)" ${i===data.goals.length-1?'disabled style="opacity:.35"':''}>↓</button>
+          <button class="btn btn-ghost btn-sm" onclick="openGoalModal('${g.id}')">Ubah</button>
+          <button class="btn btn-warn btn-sm" onclick="hapusGoal('${g.id}')">Hapus</button>
+        </div>
+      </div>`;
+  }).join('');
+  return `<div class="roadmap">${items}</div>
+    <button class="btn btn-accent btn-full" onclick="openGoalModal(null)">+ Tambah target</button>
+    <div class="small muted section-gap" style="text-align:center">Pakai ↑ ↓ untuk mengatur urutan prioritas.</div>`;
+}
+function moveGoal(i,dir){
+  const j=i+dir;
+  if(j<0||j>=data.goals.length) return;
+  [data.goals[i],data.goals[j]]=[data.goals[j],data.goals[i]];
+  save(); render();
+}
+function hapusGoal(id){
+  const g=data.goals.find(x=>x.id===id); if(!g) return;
+  konfirmasi({judul:'Hapus target ini?',
+    pesan:`<strong>${esc(g.name)}</strong>${g.target>0?`<br>Progres tersimpan ${fmt(g.current)} dari ${fmt(g.target)}`:''}<br><br>Catatan dan progresnya ikut terhapus.`},
+    ()=>{ data.goals=data.goals.filter(x=>x.id!==id); save(); render(); });
+}
+function openGoalModal(id){
+  const g = id ? data.goals.find(x=>x.id===id) : null;
+  modalState={type:'goal',id};
+  openModal(`
+    <h3>${g?'Ubah Target':'Target Baru'}</h3>
+    <div class="field"><span class="field-label">Nama target</span>
+      <input type="text" id="g-nama" value="${g?esc(g.name):''}" placeholder="Contoh: DP Haji Plus Ibu" /></div>
+    <div class="field" style="margin-bottom:4px"><span class="field-label">Sudah terkumpul</span>
+      <div class="rp-wrap"><span class="rp-prefix">Rp</span>
+        <input type="text" id="g-current" class="rp-input num" inputmode="numeric"
+               value="${g?Number(g.current).toLocaleString('id-ID'):''}" placeholder="0" oninput="formatRupiahGoal(this,'g-hint-c')" /></div></div>
+    <div class="dur-hint" id="g-hint-c">${g&&g.current?terbilangSingkat(g.current):'&nbsp;'}</div>
+    <div class="field" style="margin-bottom:4px"><span class="field-label">Target biaya</span>
+      <div class="rp-wrap"><span class="rp-prefix">Rp</span>
+        <input type="text" id="g-target" class="rp-input num" inputmode="numeric"
+               value="${g?Number(g.target).toLocaleString('id-ID'):''}" placeholder="0" oninput="formatRupiahGoal(this,'g-hint-t')" /></div></div>
+    <div class="dur-hint" id="g-hint-t">${g&&g.target?terbilangSingkat(g.target):'Kosongkan kalau biayanya belum diketahui.'}</div>
+    <div class="field"><span class="field-label">Tanggal target</span>
+      <input type="date" id="g-date" value="${g?g.date||'':''}" /></div>
+    <div class="field"><span class="field-label">Catatan</span>
+      <input type="text" id="g-note" value="${g?esc(g.note):''}" placeholder="Opsional" /></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button class="btn btn-accent" onclick="simpanGoal()">Simpan</button>
+    </div>`);
+}
+function formatRupiahGoal(el,hintId){
+  const v=parseRupiah(el.value);
+  el.value = v ? v.toLocaleString("id-ID") : "";
+  const h=document.getElementById(hintId);
+  if(h) h.textContent = v ? terbilangSingkat(v) : " ";
+}
+function simpanGoal(){
+  const name=document.getElementById("g-nama").value.trim();
+  if(!name){ alert("Nama target belum diisi."); return; }
+  const payload={
+    name,
+    current:parseRupiah(document.getElementById("g-current").value),
+    target:parseRupiah(document.getElementById("g-target").value),
+    date:document.getElementById("g-date").value,
+    note:document.getElementById("g-note").value.trim(),
+  };
+  if(modalState.id){ Object.assign(data.goals.find(x=>x.id===modalState.id),payload); }
+  else { data.goals.push({id:uid('g'),...payload}); }
+  save(); closeModal(); render();
+}
+
+/* ---------- JADWAL ---------- */
+function renderJadwal(){
+  const sub=`
+    <div class="subnav">
+      <button class="${subView==='jadwal'?'active':''}" onclick="setSub('jadwal')">Jadwal</button>
+      <button class="${subView==='rutin'?'active':''}" onclick="setSub('rutin')">Rutinitas</button>
+      <button class="${subView==='atur'?'active':''}" onclick="setSub('atur')">Pengaturan</button>
+    </div>`;
+  if(subView==='rutin') return sub+renderRutin();
+  if(subView==='atur') return sub+renderTaskKategori()+renderKategori()+renderJamKerja();
+
+  const end=addDays(weekKey,6);
+  const isThis = weekKey===mondayKey(new Date());
+  const w=getWeek(weekKey);
+  const goals=w.goals.length?w.goals.map(g=>`
+      <div class="goal-row ${g.done?'done':''}">
+        <div class="checkbox ${g.done?'checked':''}" onclick="toggleWeekGoal('${g.id}')">${g.done?'✓':''}</div>
+        <div class="goal-text">${esc(g.name)}</div>
+        <button class="icon-btn" onclick="removeWeekGoal('${g.id}')">✕</button>
+      </div>`).join(''):`<div class="empty">Belum ada target minggu ini.</div>`;
+
+  let days="";
+  const todayKey=dateKey(new Date());
+  for(let i=0;i<7;i++){
+    const d=addDays(weekKey,i);
+    days+=renderDayCard(d,d===todayKey);
+  }
+
+  const backlog=data.plan.backlog.length?data.plan.backlog.map(b=>{
+    const c=b.cat?catById(b.cat):null, kt=b.kat?taskCatById(b.kat):null, p=b.prio?PRIORITIES[b.prio]:null;
+    return `
+      <div class="task">
+        <div class="task-body">
+          <div class="task-name">${esc(b.name)}</div>
+          ${(c||kt||p)?`<div class="task-meta">
+            ${p?`<span class="chip" style="background:${p.bg};color:${p.fg}">${esc(b.prio)}</span>`:''}
+            ${c?`<span class="chip" style="background:${c.color}1A;color:${c.color}">${esc(c.name)}</span>`:''}
+            ${kt?`<span class="chip" style="background:${kt.color};color:#fff">${esc(kt.name)}</span>`:''}
+          </div>`:''}
+        </div>
+        <div class="task-actions">
+          <button class="btn btn-line btn-sm" onclick="openBacklogModal('${b.id}')">Ubah</button>
+          <button class="btn btn-ghost btn-sm" onclick="promoteBacklog('${b.id}')">Jadwalkan</button>
+          <button class="icon-btn" onclick="removeBacklog('${b.id}')">✕</button>
+        </div>
+      </div>`;
+  }).join(''):`<div class="empty">Kosong. Buang semua ide/tugas dadakan ke sini dulu.</div>`;
+
+  return sub+`
+    <div class="weekbar">
+      <button class="nav-btn" onclick="shiftWeek(-1)">‹</button>
+      <div class="label">${fmtDayShort(weekKey)} – ${fmtDayShort(end)}${isThis?' <span>Minggu ini</span>':' <span>'+parseDate(weekKey).getFullYear()+'</span>'}</div>
+      <button class="nav-btn" onclick="shiftWeek(1)">›</button>
+    </div>
+    <div class="week-actions">
+      <button class="btn btn-line btn-sm" onclick="goToday()">Ke minggu ini</button>
+      <button class="btn btn-line btn-sm" onclick="copyWeek(-1)">Salin dari minggu lalu</button>
+      <button class="btn btn-line btn-sm" onclick="copyWeek(1)">Salin ke minggu depan</button>
+    </div>
+
+    <div class="card">
+      <h3>Target Minggu Ini</h3>
+      ${goals}
+      <div class="week-actions section-gap" style="margin-bottom:0">
+        <input type="text" id="new-week-goal" placeholder="Contoh: dapat 3 penawaran tukang" onkeydown="if(event.key==='Enter')addWeekGoal()" />
+        <button class="btn btn-accent btn-sm" onclick="addWeekGoal()">Tambah</button>
+      </div>
+    </div>
+
+    <div class="day-grid">${days}</div>
+
+    <div class="card section-gap">
+      <h3>Bak Ide &amp; Nanti</h3>
+      <div class="small muted" style="margin-bottom:6px">Isinya tidak terikat hari. <strong>Ubah</strong> untuk memperbaiki tulisannya, <strong>Jadwalkan</strong> kalau sudah tahu mau dikerjakan kapan.</div>
+      ${backlog}
+      <div class="week-actions section-gap" style="margin-bottom:0">
+        <input type="text" id="new-backlog" placeholder="Tulis cepat, atur waktunya nanti" onkeydown="if(event.key==='Enter')addBacklog()" />
+        <button class="btn btn-ghost btn-sm" onclick="addBacklog()">Simpan</button>
+      </div>
+    </div>`;
+}
+
+function renderDayCard(dateStr,isToday){
+  const w=getWeek(weekKey);
+  const d=parseDate(dateStr);
+  const wd=d.getDay();
+  const note=w.dayNotes[dateStr]||{type:"Normal",text:""};
+  const isOff=["Cuti","Libur","Sakit"].includes(note.type);
+  const isWorkday=data.plan.work.days.includes(wd);
+  const list=tasksForDay(weekKey,dateStr);
+
+  const tasksHtml=list.length?list.map(t=>{
+    const c=catById(t.cat), p=PRIORITIES[t.prio]||PRIORITIES["Rutin"];
+    const kt=taskCatById(t.kat);
+    const dur=durMin(t.start,t.end);
+    return `
+      <div class="task ${t.done?'done':''}">
+        <div class="checkbox ${t.done?'checked':''}" onclick="toggleTask('${dateStr}','${t.id}',${t.rec})">${t.done?'✓':''}</div>
+        <div class="task-body">
+          <div class="task-name">${esc(t.name)}${t.rec?' <span class="rec-mark">↻</span>':''}</div>
+          <div class="task-meta">
+            <span class="chip" style="background:${p.bg};color:${p.fg}">${t.prio||'Rutin'}</span>
+            <span class="chip" style="background:${c.color}1A;color:${c.color}">${esc(c.name)}</span>
+            ${kt?`<span class="chip" style="background:${kt.color};color:#fff">${esc(kt.name)}</span>`:''}
+            ${t.start&&t.end?`<span class="time-text">${t.start}–${t.end} · ${fmtDur(dur)}</span>`:`<span class="time-text">tanpa jam</span>`}
+          </div>
+        </div>
+        <div class="task-actions">
+          ${t.rec?`<button class="icon-btn" title="Lewati minggu ini" onclick="skipRec('${dateStr}','${t.id}')">✕</button>`
+                 :`<button class="icon-btn" title="Ubah" onclick="openTaskModal('${dateStr}','${t.id}')">✎</button>
+                   <button class="icon-btn" onclick="removeTask('${t.id}')">✕</button>`}
+        </div>
+      </div>`;
+  }).join(''):`<div class="empty">Belum ada tugas.</div>`;
+
+  let capHtml="";
+  if(isWorkday && !isOff){
+    const cap=workCapacity(), used=usedOfficeMin(weekKey,dateStr);
+    const pct=cap?Math.min(100,Math.round(used/cap*100)):0;
+    const over=used>cap;
+    capHtml=`<div class="cap">
+      <div class="cap-track"><div class="cap-fill ${over?'over':''}" style="width:${pct}%"></div></div>
+      <div class="cap-text">Jam kantor terpakai ${fmtDur(used)||'0 menit'} dari ${fmtDur(cap)}${over?' — kelebihan':''}</div>
+    </div>`;
+  }
+
+  const opts=DAY_NOTE_TYPES.map(t=>`<option ${note.type===t?'selected':''}>${t}</option>`).join('');
+
+  return `
+    <div class="day-card ${isToday?'today':''} ${isOff?'off':''}">
+      <div class="day-head">
+        <div><span class="day-name">${DAY_NAMES[wd]}</span><span class="day-date">${fmtDayShort(dateStr)}</span></div>
+        <select class="day-note-select" onchange="setDayNote('${dateStr}',this.value)">${opts}</select>
+      </div>
+      ${isOff?`<div class="badge-off">${note.type}</div>`:''}
+      ${capHtml}
+      ${tasksHtml}
+      <button class="btn btn-ghost btn-sm btn-full section-gap" onclick="openTaskModal('${dateStr}',null)">+ Tambah tugas</button>
+    </div>`;
+}
+
+/* week actions */
+function shiftWeek(n){ weekKey=addDays(weekKey,n*7); render(); }
+function goToday(){ weekKey=mondayKey(new Date()); render(); }
+function setDayNote(dateStr,type){
+  const w=getWeek(weekKey);
+  w.dayNotes[dateStr]={type,text:(w.dayNotes[dateStr]||{}).text||""};
+  save(); render();
+}
+function copyWeek(dir){
+  const src = dir===-1 ? addDays(weekKey,-7) : weekKey;
+  const dst = dir===-1 ? weekKey : addDays(weekKey,7);
+  const s=getWeek(src), t=getWeek(dst);
+  if(!s.tasks.length && !s.goals.length){ alert("Minggu sumber masih kosong, tidak ada yang bisa disalin."); return; }
+  if(t.tasks.length){
+    konfirmasi({judul:'Minggu tujuan sudah berisi tugas',aman:true,ya:'Tetap salin',
+      pesan:`Ada ${t.tasks.length} tugas di minggu tujuan. Salinan akan <strong>ditambahkan</strong>, bukan menimpa.`},
+      ()=>lakukanSalinMinggu(src,dst,dir));
+    return;
+  }
+  lakukanSalinMinggu(src,dst,dir);
+}
+function lakukanSalinMinggu(src,dst,dir){
+  const s=getWeek(src), t=getWeek(dst);
+  s.tasks.forEach(task=>{
+    const offset=Math.round((parseDate(task.date)-parseDate(src))/86400000);
+    t.tasks.push({...task,id:uid('t'),date:addDays(dst,offset),done:false});
+  });
+  s.goals.forEach(g=>t.goals.push({id:uid('wg'),name:g.name,done:false}));
+  save();
+  if(dir===1) weekKey=dst;
+  render();
+}
+
+/* weekly goals */
+function addWeekGoal(){
+  const el=document.getElementById("new-week-goal");
+  const v=el.value.trim(); if(!v) return;
+  getWeek(weekKey).goals.push({id:uid('wg'),name:v,done:false});
+  save(); render();
+}
+function toggleWeekGoal(id){
+  const g=getWeek(weekKey).goals.find(x=>x.id===id); if(!g) return;
+  g.done=!g.done; save(); render();
+}
+function removeWeekGoal(id){
+  const w=getWeek(weekKey); const g=w.goals.find(x=>x.id===id); if(!g) return;
+  konfirmasi({judul:'Hapus target mingguan ini?',pesan:`<strong>${esc(g.name)}</strong>`},
+    ()=>{ const ww=getWeek(weekKey); ww.goals=ww.goals.filter(x=>x.id!==id); save(); render(); });
+}
+
+/* tasks */
+function toggleTask(dateStr,id,isRec){
+  const w=getWeek(weekKey);
+  if(isRec){ w.recDone[id]=!w.recDone[id]; }
+  else { const t=w.tasks.find(x=>x.id===id); if(t) t.done=!t.done; }
+  save(); render();
+}
+function skipRec(dateStr,iid){
+  konfirmasi({judul:'Lewati untuk tanggal ini?',aman:true,ya:'Lewati',
+    pesan:'Tugas rutin ini hanya dihilangkan pada tanggal ini. Minggu berikutnya tetap muncul seperti biasa.'},
+    ()=>{ getWeek(weekKey).recSkip[iid]=true; save(); render(); });
+}
+function removeTask(id){
+  const w=getWeek(weekKey); const t=w.tasks.find(x=>x.id===id); if(!t) return;
+  konfirmasi({judul:'Hapus tugas ini?',
+    pesan:`<strong>${esc(t.name)}</strong>${t.start&&t.end?`<br>${t.start}–${t.end}`:''}`},
+    ()=>{ const ww=getWeek(weekKey); ww.tasks=ww.tasks.filter(x=>x.id!==id); save(); render(); });
+}
+
+/* backlog */
+function addBacklog(){
+  const el=document.getElementById("new-backlog");
+  const v=el.value.trim(); if(!v) return;
+  data.plan.backlog.push({id:uid('bk'),name:v}); save(); render();
+}
+function removeBacklog(id){
+  const b=data.plan.backlog.find(x=>x.id===id); if(!b) return;
+  konfirmasi({judul:'Hapus dari bak ide?',pesan:`<strong>${esc(b.name)}</strong>`},
+    ()=>{ data.plan.backlog=data.plan.backlog.filter(x=>x.id!==id); save(); render(); });
+}
+function openBacklogModal(id){
+  const b=data.plan.backlog.find(x=>x.id===id); if(!b) return;
+  modalState={type:'backlog',id};
+  openModal(`
+    <h3>Ubah Ide</h3>
+    <div class="field"><span class="field-label">Tulisan</span>
+      <input type="text" id="bk-nama" value="${esc(b.name)}" placeholder="Contoh: cari referensi harga besi" /></div>
+    <div class="field-row">
+      <div class="field"><span class="field-label">Jenis</span><select id="bk-cat">${catOptions(b.cat||data.plan.categories[0].id)}</select></div>
+      <div class="field"><span class="field-label">Prioritas</span><select id="bk-prio">${prioOptions(b.prio||'Medium')}</select></div>
+    </div>
+    <div class="field"><span class="field-label">Kategori</span><select id="bk-kat">${taskCatOptions(b.kat||'')}</select></div>
+    <div class="small muted">Tetap tersimpan di Bak Ide &amp; Nanti, tidak masuk ke hari mana pun. Semua ini ikut terbawa saat nanti dijadwalkan.</div>
+    <div class="modal-actions section-gap">
+      <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button class="btn btn-accent" onclick="simpanBacklog()">Simpan</button>
+    </div>`);
+}
+function simpanBacklog(){
+  const nama=document.getElementById("bk-nama").value.trim();
+  if(!nama){ alert("Tulisannya belum diisi."); return; }
+  const b=data.plan.backlog.find(x=>x.id===modalState.id);
+  if(b){
+    b.name=nama;
+    b.cat=document.getElementById("bk-cat").value;
+    b.prio=document.getElementById("bk-prio").value;
+    b.kat=document.getElementById("bk-kat").value;
+  }
+  save(); closeModal(); render();
+}
+function promoteBacklog(id){
+  const b=data.plan.backlog.find(x=>x.id===id); if(!b) return;
+  openTaskModal(dateKey(new Date()),null,b.name,id);
+}
+
+/* ---------- RUTINITAS ---------- */
+function renderRutin(){
+  const rows=data.plan.recurring.length?data.plan.recurring.map(r=>{
+    const c=catById(r.cat), p=PRIORITIES[r.prio]||PRIORITIES["Rutin"];
+    const kt=taskCatById(r.kat);
+    const dayTxt=r.days.slice().sort().map(d=>DAY_SHORT[d]).join(", ");
+    return `
+      <div class="task">
+        <div class="task-body">
+          <div class="task-name">${esc(r.name)}</div>
+          <div class="task-meta">
+            <span class="chip" style="background:${p.bg};color:${p.fg}">${r.prio}</span>
+            <span class="chip" style="background:${c.color}1A;color:${c.color}">${esc(c.name)}</span>
+            ${kt?`<span class="chip" style="background:${kt.color};color:#fff">${esc(kt.name)}</span>`:''}
+            <span class="time-text">${r.start&&r.end?r.start+'–'+r.end+' · ':''}${dayTxt} · ${r.freq==='biweekly'?'2 minggu sekali':'tiap minggu'}</span>
+          </div>
+        </div>
+        <div class="task-actions">
+          <button class="icon-btn" onclick="openRuleModal('${r.id}')">✎</button>
+          <button class="icon-btn" onclick="removeRule('${r.id}')">✕</button>
+        </div>
+      </div>`;
+  }).join(''):`<div class="empty">Belum ada rutinitas.</div>`;
+  return `
+    <div class="card">
+      <h3>Tugas Rutin</h3>
+      <div class="small muted" style="margin-bottom:8px">Sekali diatur, otomatis muncul tiap minggu tanpa perlu ditulis ulang. Tandai ↻ di jadwal.</div>
+      ${rows}
+      <button class="btn btn-accent btn-full section-gap" onclick="openRuleModal(null)">+ Tambah rutinitas</button>
+    </div>`;
+}
+function removeRule(id){
+  const r=data.plan.recurring.find(x=>x.id===id); if(!r) return;
+  konfirmasi({judul:'Hapus rutinitas ini?',
+    pesan:`<strong>${esc(r.name)}</strong><br><br>Akan hilang dari <strong>semua minggu</strong>, termasuk minggu yang sudah lewat.`},
+    ()=>{ data.plan.recurring=data.plan.recurring.filter(x=>x.id!==id); save(); render(); });
+}
+
+/* ---------- KATEGORI ---------- */
+function renderTaskKategori(){
+  const rows=taskCats().length?taskCats().map(c=>{
+    let dipakai=0;
+    Object.values(data.plan.weeks).forEach(w=>(w.tasks||[]).forEach(t=>{ if(t.kat===c.id) dipakai++; }));
+    data.plan.recurring.forEach(r=>{ if(r.kat===c.id) dipakai++; });
+    return `
+      <div class="row">
+        <span class="cat-dot" style="background:${c.color}"></span>
+        <input type="text" style="flex:1" value="${esc(c.name)}" oninput="updateTaskCat('${c.id}','name',this.value)" />
+        <input type="color" value="${c.color}" style="width:38px;padding:2px;height:34px" oninput="updateTaskCat('${c.id}','color',this.value)" />
+        <button class="icon-btn" onclick="hapusTaskCat('${c.id}')">✕</button>
+      </div>`;
+  }).join(''):`<div class="empty">Belum ada kategori.</div>`;
+  return `
+    <div class="card">
+      <h3>Kategori Tugas</h3>
+      <div class="small muted" style="margin-bottom:8px">Untuk menandai jenis pekerjaan: CR, Initiative, Issue Prod, dan lainnya sesuai kebutuhan Anda.</div>
+      ${rows}
+      <button class="btn btn-ghost btn-full section-gap" onclick="tambahTaskCat()">+ Tambah kategori</button>
+    </div>`;
+}
+function updateTaskCat(id,f,v){
+  const c=taskCatById(id); if(!c) return;
+  c[f]=v; save();
+}
+function tambahTaskCat(){
+  if(!data.plan.taskCats) data.plan.taskCats=[];
+  data.plan.taskCats.push({id:uid('k'),name:'Kategori baru',color:'#2F5D50'});
+  save(); render();
+}
+function hapusTaskCat(id){
+  const c=taskCatById(id); if(!c) return;
+  let dipakai=0;
+  Object.values(data.plan.weeks).forEach(w=>(w.tasks||[]).forEach(t=>{ if(t.kat===id) dipakai++; }));
+  data.plan.recurring.forEach(r=>{ if(r.kat===id) dipakai++; });
+  konfirmasi({judul:'Hapus kategori tugas ini?',
+    pesan:`<strong>${esc(c.name)}</strong>${dipakai?`<br><br>Dipakai oleh ${dipakai} tugas. Tugasnya tidak terhapus, hanya kategorinya jadi kosong.`:''}`},
+    ()=>{
+      data.plan.taskCats=taskCats().filter(x=>x.id!==id);
+      Object.values(data.plan.weeks).forEach(w=>(w.tasks||[]).forEach(t=>{ if(t.kat===id) t.kat=""; }));
+      data.plan.recurring.forEach(r=>{ if(r.kat===id) r.kat=""; });
+      save(); render();
+    });
+}
+function renderKategori(){
+  const rows=data.plan.categories.map((c,i)=>`
+    <div class="row">
+      <span class="cat-dot" style="background:${c.color}"></span>
+      <input type="text" style="flex:1" value="${esc(c.name)}" oninput="updateCat(${i},'name',this.value)" />
+      <input type="color" value="${c.color}" style="width:38px;padding:2px;height:34px" oninput="updateCat(${i},'color',this.value)" />
+      <button class="icon-btn" onclick="removeCat('${c.id}')">✕</button>
+    </div>`).join('');
+  return `
+    <div class="card">
+      <h3>Jenis Tugas</h3>
+      <div class="small muted" style="margin-bottom:8px">Kategori "Kantor" dipakai untuk menghitung pemakaian jam kerja per hari.</div>
+      ${rows}
+      <button class="btn btn-ghost btn-full section-gap" onclick="addCat()">+ Tambah jenis</button>
+    </div>`;
+}
+function updateCat(i,f,v){ data.plan.categories[i][f]=v; save(); }
+function addCat(){ data.plan.categories.push({id:uid('c'),name:'Jenis baru',color:'#6B7A8F'}); save(); render(); }
+function removeCat(id){
+  if(data.plan.categories.length<=1){ alert("Minimal harus ada satu jenis tugas."); return; }
+  const c=data.plan.categories.find(x=>x.id===id);
+  konfirmasi({judul:'Hapus jenis tugas ini?',
+    pesan:`<strong>${esc(c?c.name:'')}</strong><br><br>Tugas yang memakainya tidak terhapus, tapi jenisnya jadi kosong.`},
+    ()=>{ data.plan.categories=data.plan.categories.filter(x=>x.id!==id); save(); render(); });
+}
+
+/* ---------- JAM KERJA ---------- */
+function renderJamKerja(){
+  const w=data.plan.work;
+  const dayBtns=[1,2,3,4,5,6,0].map(d=>`<button class="${w.days.includes(d)?'on':''}" onclick="toggleWorkDay(${d})">${DAY_SHORT[d]}</button>`).join('');
+  return `
+    <div class="card">
+      <h3>Jam Kantor</h3>
+      <div class="field-row">
+        <div class="field"><span class="field-label">Mulai</span><input type="time" value="${w.start}" onchange="setWork('start',this.value)" /></div>
+        <div class="field"><span class="field-label">Selesai</span><input type="time" value="${w.end}" onchange="setWork('end',this.value)" /></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><span class="field-label">Istirahat mulai</span><input type="time" value="${w.breakStart}" onchange="setWork('breakStart',this.value)" /></div>
+        <div class="field"><span class="field-label">Istirahat selesai</span><input type="time" value="${w.breakEnd}" onchange="setWork('breakEnd',this.value)" /></div>
+      </div>
+      <div class="field"><span class="field-label">Hari kerja</span><div class="daypick">${dayBtns}</div></div>
+      <div class="small muted section-gap">
+        Rentang kantor ${fmtDur(durMin(w.start,w.end))}, istirahat ${fmtDur(durMin(w.breakStart,w.breakEnd))} →
+        <strong>jam kerja efektif ${fmtDur(workCapacity())}</strong> per hari.
+      </div>
+    </div>`;
+}
+function setWork(f,v){ data.plan.work[f]=v; save(); render(); }
+function toggleWorkDay(d){
+  const w=data.plan.work;
+  w.days = w.days.includes(d) ? w.days.filter(x=>x!==d) : [...w.days,d].sort();
+  save(); render();
+}
+
+/* ---------- MODAL ---------- */
+let aksiKonfirmasi=null;
+function konfirmasi(opsi,aksi){
+  aksiKonfirmasi=aksi;
+  openModal(`
+    <h3>${esc(opsi.judul||'Yakin?')}</h3>
+    <div class="konf-pesan">${opsi.pesan||''}</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="batalKonfirmasi()">Batal</button>
+      <button class="btn ${opsi.aman?'btn-accent':'btn-danger'}" onclick="jalankanKonfirmasi()">${esc(opsi.ya||'Hapus')}</button>
+    </div>`);
+}
+function batalKonfirmasi(){ aksiKonfirmasi=null; closeModal(); }
+function jalankanKonfirmasi(){
+  const a=aksiKonfirmasi; aksiKonfirmasi=null; closeModal();
+  if(typeof a==='function') a();
+}
+function openModal(html){
+  document.getElementById("modal").innerHTML=html;
+  document.getElementById("modal-bg").classList.add("show");
+}
+function closeModal(){ document.getElementById("modal-bg").classList.remove("show"); modalState=null; }
+
+function taskCatOptions(sel){
+  return `<option value="">— tanpa kategori —</option>`+
+    taskCats().map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${esc(c.name)}</option>`).join('');
+}
+function catOptions(sel){ return data.plan.categories.map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${esc(c.name)}</option>`).join(''); }
+function prioOptions(sel){ return Object.keys(PRIORITIES).map(p=>`<option ${p===sel?'selected':''}>${p}</option>`).join(''); }
+
+function openTaskModal(dateStr,taskId,prefillName,backlogId){
+  const w=getWeek(weekKey);
+  const t = taskId ? w.tasks.find(x=>x.id===taskId) : null;
+  const bItem = backlogId ? data.plan.backlog.find(x=>x.id===backlogId) : null;
+  modalState={type:'task',taskId,backlogId};
+  openModal(`
+    <h3>${t?'Ubah Tugas':(backlogId?'Jadwalkan Ide':'Tugas Baru')}</h3>
+    ${backlogId?`<div class="small muted" style="margin-bottom:12px">Setelah disimpan, ide ini pindah dari Bak Ide ke tanggal yang Anda pilih.</div>`:''}
+    <div class="field"><span class="field-label">Nama tugas</span>
+      <input type="text" id="m-name" value="${esc(t?t.name:(bItem?bItem.name:(prefillName||'')))}" placeholder="Contoh: telepon calon tukang" /></div>
+    <div class="field-row">
+      <div class="field"><span class="field-label">Jenis</span><select id="m-cat">${catOptions(t?t.cat:(bItem&&bItem.cat?bItem.cat:data.plan.categories[0].id))}</select></div>
+      <div class="field"><span class="field-label">Prioritas</span><select id="m-prio">${prioOptions(t?t.prio:(bItem&&bItem.prio?bItem.prio:'Medium'))}</select></div>
+    </div>
+    <div class="field"><span class="field-label">Kategori</span><select id="m-kat">${taskCatOptions(t?t.kat:(bItem?bItem.kat:''))}</select></div>
+    <div class="field"><span class="field-label">Tanggal</span><input type="date" id="m-date" value="${t?t.date:dateStr}" /></div>
+    <div class="field-row">
+      <div class="field"><span class="field-label">Mulai</span><input type="time" id="m-start" value="${t?t.start||'':''}" oninput="updateDurHint()" /></div>
+      <div class="field"><span class="field-label">Selesai</span><input type="time" id="m-end" value="${t?t.end||'':''}" oninput="updateDurHint()" /></div>
+    </div>
+    <div class="dur-hint" id="m-dur">Durasi otomatis dihitung dari jam mulai & selesai.</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button class="btn btn-accent" onclick="saveTaskModal()">Simpan</button>
+    </div>`);
+  updateDurHint();
+}
+function updateDurHint(){
+  const s=document.getElementById("m-start"), e=document.getElementById("m-end"), h=document.getElementById("m-dur");
+  if(!s||!e||!h) return;
+  const d=durMin(s.value,e.value);
+  h.textContent = d ? `Durasi: ${fmtDur(d)}` : "Durasi otomatis dihitung dari jam mulai & selesai.";
+}
+function saveTaskModal(){
+  const name=document.getElementById("m-name").value.trim();
+  if(!name){ alert("Nama tugas belum diisi."); return; }
+  const date=document.getElementById("m-date").value;
+  if(!date){ alert("Tanggal belum diisi."); return; }
+  const start=document.getElementById("m-start").value;
+  const end=document.getElementById("m-end").value;
+  if(start&&end&&toMin(end)<=toMin(start)){ alert("Jam selesai harus lebih besar dari jam mulai."); return; }
+  const payload={name,cat:document.getElementById("m-cat").value,kat:document.getElementById("m-kat").value,prio:document.getElementById("m-prio").value,date,start,end};
+  const targetWeek=mondayKey(parseDate(date));
+  const w=getWeek(targetWeek);
+  if(modalState.taskId){
+    const cur=getWeek(weekKey);
+    const idx=cur.tasks.findIndex(x=>x.id===modalState.taskId);
+    const old=cur.tasks[idx];
+    cur.tasks.splice(idx,1);
+    w.tasks.push({...old,...payload});
+  }else{
+    w.tasks.push({id:uid('t'),done:false,...payload});
+  }
+  if(modalState.backlogId) data.plan.backlog=data.plan.backlog.filter(b=>b.id!==modalState.backlogId);
+  weekKey=targetWeek;
+  save(); closeModal(); render();
+}
+
+function openRuleModal(ruleId){
+  const r = ruleId ? data.plan.recurring.find(x=>x.id===ruleId) : null;
+  modalState={type:'rule',ruleId};
+  const days = r?r.days:[1,2,3,4,5];
+  const dayBtns=[1,2,3,4,5,6,0].map(d=>`<button class="${days.includes(d)?'on':''}" data-day="${d}" onclick="toggleRuleDay(this)">${DAY_SHORT[d]}</button>`).join('');
+  openModal(`
+    <h3>${r?'Ubah Rutinitas':'Rutinitas Baru'}</h3>
+    <div class="field"><span class="field-label">Nama tugas</span>
+      <input type="text" id="m-name" value="${esc(r?r.name:'')}" placeholder="Contoh: Daily Meeting" /></div>
+    <div class="field-row">
+      <div class="field"><span class="field-label">Jenis</span><select id="m-cat">${catOptions(r?r.cat:data.plan.categories[0].id)}</select></div>
+      <div class="field"><span class="field-label">Prioritas</span><select id="m-prio">${prioOptions(r?r.prio:'Rutin')}</select></div>
+    </div>
+    <div class="field"><span class="field-label">Kategori</span><select id="m-kat">${taskCatOptions(r?r.kat:'')}</select></div>
+    <div class="field-row">
+      <div class="field"><span class="field-label">Mulai</span><input type="time" id="m-start" value="${r?r.start||'':''}" oninput="updateDurHint()" /></div>
+      <div class="field"><span class="field-label">Selesai</span><input type="time" id="m-end" value="${r?r.end||'':''}" oninput="updateDurHint()" /></div>
+    </div>
+    <div class="dur-hint" id="m-dur">Kosongkan jam kalau tugas ini tidak terikat waktu.</div>
+    <div class="field"><span class="field-label">Hari</span><div class="daypick" id="m-days">${dayBtns}</div></div>
+    <div class="field"><span class="field-label">Pengulangan</span>
+      <select id="m-freq" onchange="toggleAnchor()">
+        <option value="weekly" ${r&&r.freq==='weekly'?'selected':''}>Tiap minggu</option>
+        <option value="biweekly" ${r&&r.freq==='biweekly'?'selected':''}>2 minggu sekali</option>
+      </select></div>
+    <div class="field" id="anchor-field" style="display:${r&&r.freq==='biweekly'?'block':'none'}">
+      <span class="field-label">Mulai dari minggu</span>
+      <input type="date" id="m-anchor" value="${r&&r.anchor?r.anchor:weekKey}" />
+      <div class="small muted" style="margin-top:4px">Dipakai sebagai patokan minggu ganjil/genap.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button class="btn btn-accent" onclick="saveRuleModal()">Simpan</button>
+    </div>`);
+  updateDurHint();
+}
+function toggleRuleDay(btn){ btn.classList.toggle("on"); }
+function toggleAnchor(){
+  const f=document.getElementById("m-freq").value;
+  document.getElementById("anchor-field").style.display = f==='biweekly'?'block':'none';
+}
+function saveRuleModal(){
+  const name=document.getElementById("m-name").value.trim();
+  if(!name){ alert("Nama tugas belum diisi."); return; }
+  const days=[...document.querySelectorAll("#m-days button.on")].map(b=>Number(b.dataset.day));
+  if(!days.length){ alert("Pilih minimal satu hari."); return; }
+  const start=document.getElementById("m-start").value, end=document.getElementById("m-end").value;
+  if(start&&end&&toMin(end)<=toMin(start)){ alert("Jam selesai harus lebih besar dari jam mulai."); return; }
+  const freq=document.getElementById("m-freq").value;
+  const anchor= freq==='biweekly' ? mondayKey(parseDate(document.getElementById("m-anchor").value||weekKey)) : "";
+  const payload={name,cat:document.getElementById("m-cat").value,kat:document.getElementById("m-kat").value,prio:document.getElementById("m-prio").value,start,end,days,freq,anchor};
+  if(modalState.ruleId){
+    const r=data.plan.recurring.find(x=>x.id===modalState.ruleId);
+    Object.assign(r,payload);
+  }else{
+    data.plan.recurring.push({id:uid('r'),...payload});
+  }
+  save(); closeModal(); render();
+}
+
+
+/* ================= SINKRON ANTAR PERANGKAT (Firebase, per bagian, realtime) =================
+   Data TIDAK dikirim sebagai satu blok besar. Tiap bagian punya dokumennya sendiri:
+     users/{uid}/trx/{id}            → satu transaksi = satu dokumen
+     users/{uid}/anggaran/{YYYY-MM}  → satu bulan, tiap pos jadi field sendiri
+     users/{uid}/jadwal/{senin}      → satu minggu, tiap tugas jadi field sendiri
+     users/{uid}/meta/…              → target, kpr, rutinitas, bak ide, pengaturan
+   Dengan begitu perubahan di satu bagian tidak pernah menimpa bagian lain. */
+
+const FB_CFG = {
+  apiKey: "AIzaSyCHAUj-FYJ2r7lo2irt6Rfm3auljmO5j04",
+  authDomain: "my-journey-krisna.firebaseapp.com",
+  projectId: "my-journey-krisna",
+  storageBucket: "my-journey-krisna.firebasestorage.app",
+  messagingSenderId: "131944952210",
+  appId: "1:131944952210:web:557e8c688aa8b84e4ed14b"
+};
+const FB_VER    = "10.12.2";
+const SESI_KEY  = "my-journey-sesi";
+const SNAP_KEY  = "my-journey-cermin";
+const MAP_DALAM = new Set(["pos","tasks","wg","dayNotes","recDone","recSkip"]);
+
+let fb = null;
+let unsubs = [];
+let cermin = {};                 /* path → salinan terakhir yang diketahui sama dengan server */
+let dorongTimer = null, renderTimer = null;
+let antre = 0, adaGalat = "", faseAwal = false, bentrok = [];
+let syncMode = "mati";           /* mati | menyambung | aman | offline | galat */
+
+/* ---------- util ---------- */
+function kanonik(v){
+  if(v===null||typeof v!=="object") return JSON.stringify(v===undefined?null:v);
+  if(Array.isArray(v)) return "["+v.map(kanonik).join(",")+"]";
+  return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+kanonik(v[k])).join(",")+"}";
+}
+function syncAktif(){ return !!(fb && fb.uid); }
+function bacaCermin(){ try{ return JSON.parse(localStorage.getItem(SNAP_KEY))||{}; }catch(e){ return {}; } }
+function simpanCermin(){ try{ localStorage.setItem(SNAP_KEY, JSON.stringify(cermin)); }catch(e){} }
+function sesi(){ try{ return JSON.parse(localStorage.getItem(SESI_KEY))||null; }catch(e){ return null; } }
+function cadangkanLokal(){
+  try{ localStorage.setItem(BACKUP_KEY, JSON.stringify({
+    waktu:new Date().toISOString(), dariVersi:APP_VERSION, keVersi:APP_VERSION, isi:JSON.stringify(data)
+  })); }catch(e){}
+}
+
+/* ---------- bentuk data: lokal ⇄ firestore ---------- */
+function keAnggaran(b){
+  const pos={}, ord=[];
+  (b.items||[]).forEach(it=>{ ord.push(it.id); pos[it.id]={n:it.name||"",a:Number(it.amount)||0}; });
+  const o={income:Number(b.income)||0, ord, pos};
+  if(b.warisan) o.warisan=true;
+  return o;
+}
+function dariAnggaran(d){
+  const ord = Array.isArray(d.ord) ? d.ord : Object.keys(d.pos||{});
+  const items = ord.filter(id=>d.pos&&d.pos[id]).map(id=>({id, name:d.pos[id].n||"", amount:Number(d.pos[id].a)||0}));
+  const o={income:Number(d.income)||0, items};
+  if(d.warisan) o.warisan=true;
+  return o;
+}
+function keMinggu(w){
+  const wg={}, wgOrd=[], tasks={}, tOrd=[];
+  (w.goals||[]).forEach(g=>{ const c={...g}; delete c.id; wgOrd.push(g.id); wg[g.id]=c; });
+  (w.tasks||[]).forEach(t=>{ const c={...t}; delete c.id; tOrd.push(t.id); tasks[t.id]=c; });
+  return {wg,wgOrd,tasks,tOrd,dayNotes:w.dayNotes||{},recDone:w.recDone||{},recSkip:w.recSkip||{}};
+}
+function dariMinggu(d){
+  const wgOrd = Array.isArray(d.wgOrd) ? d.wgOrd : Object.keys(d.wg||{});
+  const tOrd  = Array.isArray(d.tOrd)  ? d.tOrd  : Object.keys(d.tasks||{});
+  return {
+    goals: wgOrd.filter(i=>d.wg&&d.wg[i]).map(i=>({id:i,...d.wg[i]})),
+    tasks: tOrd.filter(i=>d.tasks&&d.tasks[i]).map(i=>({id:i,...d.tasks[i]})),
+    dayNotes:d.dayNotes||{}, recDone:d.recDone||{}, recSkip:d.recSkip||{}
+  };
+}
+
+/* Seluruh isi app, dipotong jadi dokumen-dokumen kecil */
+function petaLokal(){
+  const m={};
+  m["meta/target"]     = {goals:data.goals||[]};
+  m["meta/kpr"]        = {kpr:data.kpr||{}};
+  m["meta/rutinitas"]  = {recurring:data.plan.recurring||[]};
+  m["meta/bakide"]     = {backlog:data.plan.backlog||[]};
+  m["meta/pengaturan"] = {work:data.plan.work||{}, categories:data.plan.categories||[],
+                          taskCats:data.plan.taskCats||[], trxCats:data.trxCats||[], periode:data.periode||[]};
+  m["anggaran/__awal"] = keAnggaran(data.budget.awal||{});
+  Object.entries(data.budget.months||{}).forEach(([k,v])=>{ m["anggaran/"+k]=keAnggaran(v); });
+  Object.entries(data.plan.weeks||{}).forEach(([k,v])=>{ m["jadwal/"+k]=keMinggu(v); });
+  (data.dompet||[]).forEach(t=>{
+    m["trx/"+String(t.id)] = {id:t.id, tanggal:t.tanggal||"", keterangan:t.keterangan||"",
+                              jumlah:Number(t.jumlah)||0, kategori:t.kategori||"Lainnya"};
+  });
+  return m;
+}
+
+/* Terapkan satu dokumen dari server ke data lokal */
+function terapkanMasuk(path,d){
+  const i=path.indexOf("/"), kol=path.slice(0,i), id=path.slice(i+1);
+  if(kol==="trx"){
+    const t={id:(d.id!==undefined?d.id:id), tanggal:d.tanggal||"", keterangan:d.keterangan||"",
+             jumlah:Number(d.jumlah)||0, kategori:d.kategori||"Lainnya"};
+    const k=data.dompet.findIndex(x=>String(x.id)===String(id));
+    if(k>=0) data.dompet[k]=t; else data.dompet.push(t);
+    return;
+  }
+  if(kol==="anggaran"){
+    if(id==="__awal") data.budget.awal=dariAnggaran(d);
+    else data.budget.months[id]=dariAnggaran(d);
+    return;
+  }
+  if(kol==="jadwal"){ data.plan.weeks[id]=dariMinggu(d); return; }
+  if(kol==="meta"){
+    if(id==="target")     data.goals = Array.isArray(d.goals)?d.goals:[];
+    if(id==="kpr")        data.kpr = d.kpr||data.kpr;
+    if(id==="rutinitas")  data.plan.recurring = Array.isArray(d.recurring)?d.recurring:[];
+    if(id==="bakide")     data.plan.backlog = Array.isArray(d.backlog)?d.backlog:[];
+    if(id==="pengaturan"){
+      if(d.work) data.plan.work=d.work;
+      if(Array.isArray(d.categories)) data.plan.categories=d.categories;
+      if(Array.isArray(d.taskCats))   data.plan.taskCats=d.taskCats;
+      if(Array.isArray(d.trxCats)&&d.trxCats.length) data.trxCats=d.trxCats;
+      if(Array.isArray(d.periode))    data.periode=d.periode;
+    }
+  }
+}
+function terapkanHapus(path){
+  const i=path.indexOf("/"), kol=path.slice(0,i), id=path.slice(i+1);
+  if(kol==="trx")      data.dompet = data.dompet.filter(x=>String(x.id)!==String(id));
+  if(kol==="anggaran" && id!=="__awal") delete data.budget.months[id];
+  if(kol==="jadwal")   delete data.plan.weeks[id];
+}
+
+/* ---------- kirim perubahan (hanya yang berubah) ---------- */
+function refPath(path){
+  const i=path.indexOf("/");
+  return fb.F.doc(fb.db,"users",fb.uid,path.slice(0,i),path.slice(i+1));
+}
+/* Bandingkan dua versi dokumen, hasilkan daftar field yang perlu diubah saja */
+function bedaField(lama,baru){
+  const out=[];
+  const telusur=(a,b,jalur)=>{
+    const kunci=new Set([...Object.keys(a||{}),...Object.keys(b||{})]);
+    kunci.forEach(k=>{
+      const va=a?a[k]:undefined, vb=b?b[k]:undefined;
+      if(kanonik(va)===kanonik(vb)) return;
+      const j=jalur.concat(k);
+      if(jalur.length===0 && MAP_DALAM.has(k) &&
+         va && typeof va==="object" && !Array.isArray(va) &&
+         vb && typeof vb==="object" && !Array.isArray(vb)){
+        telusur(va,vb,j); return;
+      }
+      out.push(new fb.F.FieldPath(...j), vb===undefined ? fb.F.deleteField() : vb);
+    });
+  };
+  telusur(lama,baru,[]);
+  return out;
+}
+function tandaiAntre(p){
+  antre++; perbaruiStatus();
+  p.then(()=>{ antre--; adaGalat=""; perbaruiStatus(); })
+   .catch(e=>{ antre--; adaGalat=pesanGalat(e); perbaruiStatus(); });
+}
+function dorongPerubahan(){
+  if(!syncAktif()) return;
+  const peta=petaLokal();
+  let n=0;
+  for(const path in peta){
+    const baru=kanonik(peta[path]);
+    if(cermin[path]===baru) continue;
+    const lama = cermin[path] ? JSON.parse(cermin[path]) : null;
+    cermin[path]=baru; n++;
+    try{
+      if(!lama){ tandaiAntre(fb.F.setDoc(refPath(path), peta[path])); }
+      else{
+        const args=bedaField(lama,peta[path]);
+        if(args.length) tandaiAntre(fb.F.updateDoc(refPath(path),...args).catch(e=>{
+          if(e&&e.code==="not-found") return fb.F.setDoc(refPath(path), peta[path]);
+          throw e;
+        }));
+      }
+    }catch(e){ adaGalat=pesanGalat(e); }
+  }
+  for(const path in cermin){
+    if(path in peta) continue;
+    delete cermin[path]; n++;
+    try{ tandaiAntre(fb.F.deleteDoc(refPath(path))); }catch(e){ adaGalat=pesanGalat(e); }
+  }
+  if(n) simpanCermin();
+  perbaruiStatus();
+}
+function jadwalkanDorong(){
+  if(!syncAktif()) return;
+  clearTimeout(dorongTimer);
+  dorongTimer=setTimeout(dorongPerubahan,700);
+}
+
+/* ---------- dengarkan perubahan dari perangkat lain ---------- */
+function renderNanti(){
+  clearTimeout(renderTimer);
+  renderTimer=setTimeout(()=>{
+    const modalTerbuka=document.getElementById("modal-bg").classList.contains("show");
+    if(modalTerbuka){ renderNanti(); return; }   /* jangan ganggu saat sedang mengisi form */
+    render();
+  },250);
+}
+function pasangPendengar(){
+  const koleksi=["meta","anggaran","jadwal","trx"];
+  return Promise.all(koleksi.map(nama=>new Promise(selesai=>{
+    let pertama=true;
+    const q=fb.F.collection(fb.db,"users",fb.uid,nama);
+    const stop=fb.F.onSnapshot(q, snap=>{
+      let berubah=false;
+      snap.docChanges().forEach(ch=>{
+        if(ch.doc.metadata.hasPendingWrites) return;      /* gema tulisan sendiri, abaikan */
+        const path=nama+"/"+ch.doc.id;
+        if(ch.type==="removed"){
+          if(cermin[path]!==undefined){ terapkanHapus(path); delete cermin[path]; berubah=true; }
+          return;
+        }
+        const isi=ch.doc.data(), sisi=kanonik(isi);
+        if(cermin[path]===sisi) return;
+        if(faseAwal && cermin[path]!==undefined){
+          const lokal=petaLokal()[path];
+          if(lokal && kanonik(lokal)!==cermin[path]) bentrok.push(namaBagian(path));
+        }
+        terapkanMasuk(path,isi); cermin[path]=sisi; berubah=true;
+      });
+      if(berubah){ simpanTanpaTanda(); simpanCermin(); renderNanti(); }
+      perbaruiStatus(snap.metadata.fromCache);
+      if(pertama){ pertama=false; selesai(stop); }
+    }, err=>{
+      adaGalat=pesanGalat(err); syncMode="galat"; perbaruiStatus();
+      if(pertama){ pertama=false; selesai(null); }
+    });
+    unsubs.push(stop);
+  })));
+}
+function namaBagian(path){
+  const i=path.indexOf("/"), kol=path.slice(0,i), id=path.slice(i+1);
+  if(kol==="trx") return "Transaksi dompet";
+  if(kol==="anggaran") return "Anggaran "+(id==="__awal"?"(pola awal)":id);
+  if(kol==="jadwal") return "Jadwal minggu "+id;
+  return {target:"Target",kpr:"KPR",rutinitas:"Rutinitas",bakide:"Bak Ide",pengaturan:"Pengaturan"}[id]||id;
+}
+
+/* ---------- status ---------- */
+function perbaruiStatus(dariCache){
+  if(dariCache!==undefined) syncMode = dariCache ? "offline" : (adaGalat?"galat":"aman");
+  else if(syncAktif() && syncMode!=="menyambung") syncMode = adaGalat ? "galat" : (syncMode==="offline"?"offline":"aman");
+  const pill=document.getElementById("sync-pill");
+  if(pill){
+    let teks="", kelas="";
+    if(!syncAktif()) teks="";
+    else if(syncMode==="menyambung") teks="Menyambung…";
+    else if(antre>0) teks = syncMode==="offline" ? `Offline — ${antre} perubahan menunggu` : "Menyimpan…";
+    else if(syncMode==="offline") teks="Offline — tersimpan di perangkat";
+    else if(syncMode==="galat"){ teks="Gagal sinkron"; kelas="galat"; }
+    else { teks="Tersinkron"; kelas="aman"; }
+    pill.textContent=teks;
+    pill.className="sync-pill "+kelas;
+    pill.style.display = teks ? "block" : "none";
+    if(kelas==="aman") setTimeout(()=>{ if(pill.className.indexOf("aman")>=0) pill.style.display="none"; },1800);
+  }
+  const box=document.getElementById("sync-status");
+  if(box) box.innerHTML=ringkasanSync();
+}
+function ringkasanSync(){
+  const s=sesi();
+  if(!s) return `<div class="small muted">Belum aktif — data hanya tersimpan di perangkat ini.</div>`;
+  let st="Menyambung…";
+  if(syncAktif()){
+    if(syncMode==="galat") st=`Bermasalah — ${esc(adaGalat)}`;
+    else if(syncMode==="offline") st= antre>0 ? `Offline — ${antre} perubahan menunggu dikirim` : "Offline — perubahan tersimpan di perangkat";
+    else st = antre>0 ? "Menyimpan…" : "Aktif, realtime";
+  } else if(adaGalat) st=`Terputus — ${esc(adaGalat)}`;
+  return `
+    <div class="row"><span class="name">Status</span><span class="val small">${st}</span></div>
+    <div class="row"><span class="name">Akun</span><span class="val small">${esc(s.email||'')}</span></div>
+    <div class="row"><span class="name">Project Firebase</span><span class="val small">${esc(FB_CFG.projectId)}</span></div>`;
+}
+function pesanGalat(e){
+  const c=(e&&e.code)||"";
+  if(c==="auth/wrong-password"||c==="auth/invalid-credential") return "Email atau password salah.";
+  if(c==="auth/invalid-email") return "Format email tidak valid.";
+  if(c==="auth/user-not-found") return "Akun belum terdaftar di Firebase Console.";
+  if(c==="auth/too-many-requests") return "Terlalu sering gagal login, coba lagi beberapa menit lagi.";
+  if(c==="auth/operation-not-allowed") return "Metode Email/Password belum diaktifkan di Firebase Console.";
+  if(c==="auth/network-request-failed") return "Tidak ada koneksi internet.";
+  if(c==="permission-denied") return "Ditolak Firestore — cek security rules dan UID-nya.";
+  if(c==="unavailable") return "Server tidak terjangkau, sedang offline.";
+  return (e&&e.message)?String(e.message).slice(0,140):"Kesalahan tidak dikenal.";
+}
+
+/* ---------- sambungan ---------- */
+async function muatFirebase(){
+  const [A,U,F]=await Promise.all([
+    import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-app.js`),
+    import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-auth.js`),
+    import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-firestore.js`),
+  ]);
+  const app=A.initializeApp(FB_CFG,"myjourney");
+  let db;
+  try{
+    db=F.initializeFirestore(app,{localCache:F.persistentLocalCache({tabManager:F.persistentMultipleTabManager()})});
+  }catch(e){ db=F.getFirestore(app); }
+  return {A,U,F,app,auth:U.getAuth(app),db,uid:null,email:""};
+}
+
+function isiLokalBerarti(){
+  const adaMinggu=Object.values(data.plan.weeks||{}).some(w=>(w.tasks&&w.tasks.length)||(w.goals&&w.goals.length));
+  const adaAnggaran=Object.values(data.budget.months||{}).some(b=>!b.warisan);
+  return (data.dompet||[]).length>0 || adaMinggu || adaAnggaran || (data.plan.backlog||[]).length>0;
+}
+
+async function mulaiSinkron(uidLogin,email,pertamaKali){
+  fb.uid=uidLogin; fb.email=email;
+  cermin = pertamaKali ? {} : bacaCermin();
+  cadangkanLokal();
+  faseAwal=true; bentrok=[]; syncMode="menyambung"; perbaruiStatus();
+  await pasangPendengar();
+  faseAwal=false;
+  simpanTanpaTanda();
+  dorongPerubahan();
+  syncMode="aman"; perbaruiStatus();
+  render();
+  if(bentrok.length){
+    const daftar=[...new Set(bentrok)].slice(0,8).join("<br>");
+    setTimeout(()=>konfirmasi({judul:'Ada perubahan dari perangkat lain',aman:true,ya:'Mengerti',
+      pesan:`Bagian berikut diperbarui dari perangkat lain, jadi versi di perangkat ini digantikan:<br><br>${daftar}<br><br>Salinan pengaman sudah dibuat lebih dulu — bisa dipulihkan dari kartu di menu Data kalau ternyata versi di sini yang benar.`},()=>{}),400);
+  }
+}
+
+async function syncMasuk(){
+  const email=(document.getElementById("fb-email").value||"").trim();
+  const pass=document.getElementById("fb-pass").value||"";
+  if(!email||!pass){ alert("Email dan password belum diisi."); return; }
+  const lanjut=async()=>{
+    syncMode="menyambung"; perbaruiStatus();
+    try{
+      if(!fb) fb=await muatFirebase();
+      const cred=await fb.U.signInWithEmailAndPassword(fb.auth,email,pass);
+      localStorage.setItem(SESI_KEY,JSON.stringify({email}));
+      await mulaiSinkron(cred.user.uid,email,true);
+    }catch(e){
+      adaGalat=pesanGalat(e); syncMode="galat"; perbaruiStatus();
+      alert("Gagal menghubungkan: "+adaGalat);
+      render();
+    }
+  };
+  if(isiLokalBerarti()){
+    konfirmasi({judul:'Gabungkan dengan data di server?',aman:true,ya:'Gabungkan',
+      pesan:'Perangkat ini sudah punya isi. Setelah tersambung, isi server dan isi perangkat ini digabung — untuk bagian yang sama-sama ada, versi server yang dipakai.<br><br>Salinan pengaman dibuat otomatis sebelum penggabungan.'},lanjut);
+  } else lanjut();
+}
+
+async function syncSambungUlang(){
+  const s=sesi();
+  if(!s) return;
+  try{
+    fb=await muatFirebase();
+    const u=await new Promise(res=>{
+      const stop=fb.U.onAuthStateChanged(fb.auth,x=>{ stop(); res(x); });
+      setTimeout(()=>res(null),8000);
+    });
+    if(!u){ adaGalat="Sesi berakhir, perlu login ulang."; syncMode="galat"; perbaruiStatus(); render(); return; }
+    await mulaiSinkron(u.uid,u.email||s.email,false);
+  }catch(e){
+    adaGalat=pesanGalat(e); syncMode="galat"; perbaruiStatus(); render();
+  }
+}
+
+function syncKeluar(){
+  konfirmasi({judul:'Putuskan sinkron di perangkat ini?',ya:'Putuskan',
+    pesan:'Data di perangkat ini tetap ada, begitu juga salinan di server. Anda hanya perlu login lagi untuk menyambungkannya kembali.'},
+    async()=>{
+      unsubs.forEach(f=>{ try{ f&&f(); }catch(e){} }); unsubs=[];
+      try{ if(fb&&fb.auth) await fb.U.signOut(fb.auth); }catch(e){}
+      fb=null; antre=0; adaGalat=""; syncMode="mati";
+      localStorage.removeItem(SESI_KEY); localStorage.removeItem(SNAP_KEY); cermin={};
+      perbaruiStatus(); render();
+    });
+}
+
+function syncSekarang(){
+  if(!syncAktif()){ alert("Sinkron belum aktif."); return; }
+  dorongPerubahan();
+  alert("Perubahan lokal dikirim. Data dari perangkat lain masuk sendiri secara realtime, tidak perlu ditarik manual.");
+}
+
+function renderSyncCard(){
+  if(sesi()) return `
+    <div class="card">
+      <h3>Sinkron Antar Perangkat</h3>
+      <div id="sync-status">${ringkasanSync()}</div>
+      <div class="week-actions section-gap" style="margin-bottom:0">
+        <button class="btn btn-accent btn-sm" onclick="syncSekarang()">Kirim sekarang</button>
+        <button class="btn btn-line btn-sm" onclick="syncKeluar()">Putuskan</button>
+      </div>
+      <div class="small muted section-gap">
+        Perubahan dari perangkat lain masuk sendiri dalam hitungan detik. Saat tidak ada sinyal, perubahan
+        diantre di perangkat ini dan terkirim otomatis begitu online — asal ikon app-nya tidak dihapus.
+      </div>
+    </div>`;
+  return `
+    <div class="card">
+      <h3>Sinkron Antar Perangkat</h3>
+      <div class="small muted" style="margin-bottom:10px">
+        Masuk dengan akun Firebase Anda supaya data yang sama muncul di HP, laptop, dan tablet.
+      </div>
+      <div class="field"><span class="field-label">Email</span>
+        <input type="text" id="fb-email" inputmode="email" autocomplete="username" placeholder="email akun Firebase" /></div>
+      <div class="field"><span class="field-label">Password</span>
+        <input type="password" id="fb-pass" autocomplete="current-password" placeholder="password akun Firebase" /></div>
+      <button class="btn btn-accent btn-full" onclick="syncMasuk()">Masuk &amp; sinkronkan</button>
+      <div class="small muted section-gap">
+        Akun dibuat di Firebase Console → Authentication → Users. App ini tidak bisa mendaftarkan akun baru.
+      </div>
+    </div>`;
+}
+
+/* ---------- PWA ---------- */
+/* Manifest dibuat dari blob, jadi alamat ikon harus absolut —
+   alamat relatif akan dicari dari blob, bukan dari halaman. */
+function alamatIkon(nama){
+  try{ return new URL(nama, location.href).href; }catch(e){ return nama; }
+}
+const manifest={name:"My Journey",short_name:"My Journey",start_url:".",display:"standalone",
+  background_color:"#F6F4EE",theme_color:"#173229",
+  icons:[{src:alamatIkon("icon-192.png"),sizes:"192x192",type:"image/png",purpose:"any"},
+         {src:alamatIkon("icon-512.png"),sizes:"512x512",type:"image/png",purpose:"any"}]};
+document.getElementById("manifest-placeholder").href=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:"application/json"}));
+if("serviceWorker" in navigator){
+  const sw=`
+    const CACHE="my-journey-${APP_VERSION}";
+    self.addEventListener("install",e=>self.skipWaiting());
+    self.addEventListener("activate",e=>e.waitUntil(
+      caches.keys().then(k=>Promise.all(k.filter(n=>n!==CACHE).map(n=>caches.delete(n)))).then(()=>self.clients.claim())
+    ));
+    self.addEventListener("fetch",e=>{
+      if(e.request.method!=="GET") return;
+      e.respondWith(
+        fetch(e.request).then(r=>{
+          const salinan=r.clone();
+          caches.open(CACHE).then(c=>c.put(e.request,salinan)).catch(()=>{});
+          return r;
+        }).catch(()=>caches.match(e.request))
+      );
+    });`;
+  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"}))).catch(()=>{});
+}
+
+const jumlahMigrasi = migrasiDompetLama();
+render();
+syncSambungUlang();
+/* Data masuk sendiri lewat pendengar realtime, jadi tidak perlu ditarik manual.
+   Yang perlu didorong saat app kembali aktif hanyalah perubahan lokal yang belum terkirim. */
+function saatKembaliAktif(){ if(syncAktif()) dorongPerubahan(); }
+window.addEventListener("focus",saatKembaliAktif);
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) saatKembaliAktif(); });
+if(jumlahMigrasi>0){
+  setTimeout(()=>{
+    alert(`${jumlahMigrasi} transaksi dari Dompet Saya berhasil dipindahkan ke app ini.`);
+    setTab("dompet");
+  },400);
+}
+</script>
+</body>
+</html>
