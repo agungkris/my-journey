@@ -291,7 +291,7 @@
    supaya data yang sudah ada tetap terbaca. */
 const STORAGE_KEY = "peta-rencana-v1";
 const BACKUP_KEY = "peta-rencana-cadangan-otomatis";
-const APP_VERSION = "2.1";
+const APP_VERSION = "2.2";
 const DAY_NAMES = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
 const DAY_SHORT = ["Min","Sen","Sel","Rab","Kam","Jum","Sab"];
 const PRIORITIES = {
@@ -1833,9 +1833,9 @@ function toggleWorkDay(d){
 }
 
 /* ---------- MODAL ---------- */
-let aksiKonfirmasi=null;
+let aksiKonfirmasi=null, aksiBatal=null;
 function konfirmasi(opsi,aksi){
-  aksiKonfirmasi=aksi;
+  aksiKonfirmasi=aksi; aksiBatal=opsi.batal||null;
   openModal(`
     <h3>${esc(opsi.judul||'Yakin?')}</h3>
     <div class="konf-pesan">${opsi.pesan||''}</div>
@@ -1844,9 +1844,14 @@ function konfirmasi(opsi,aksi){
       <button class="btn ${opsi.aman?'btn-accent':'btn-danger'}" onclick="jalankanKonfirmasi()">${esc(opsi.ya||'Hapus')}</button>
     </div>`);
 }
-function batalKonfirmasi(){ aksiKonfirmasi=null; closeModal(); }
+function batalKonfirmasi(){
+  const b=aksiBatal; aksiKonfirmasi=null; aksiBatal=null; closeModal();
+  if(typeof b==='function') b();
+}
+/* Versi konfirmasi() yang bisa di-await; hasilnya true kalau dipilih, false kalau dibatalkan. */
+function tanya(opsi){ return new Promise(res=>konfirmasi({...opsi,batal:()=>res(false)},()=>res(true))); }
 function jalankanKonfirmasi(){
-  const a=aksiKonfirmasi; aksiKonfirmasi=null; closeModal();
+  const a=aksiKonfirmasi; aksiKonfirmasi=null; aksiBatal=null; closeModal();
   if(typeof a==='function') a();
 }
 function openModal(html){
@@ -2000,6 +2005,7 @@ const FB_CFG = {
 const FB_VER    = "10.12.2";
 const SESI_KEY  = "my-journey-sesi";
 const SNAP_KEY  = "my-journey-cermin";
+const PEMILIK_KEY = "my-journey-pemilik";   /* UID pemilik isi localStorage saat ini */
 const MAP_DALAM = new Set(["pos","tasks","wg","dayNotes","recDone","recSkip"]);
 
 let fb = null;
@@ -2023,6 +2029,21 @@ function cadangkanLokal(){
   try{ localStorage.setItem(BACKUP_KEY, JSON.stringify({
     waktu:new Date().toISOString(), dariVersi:APP_VERSION, keVersi:APP_VERSION, isi:JSON.stringify(data)
   })); }catch(e){}
+}
+/* Kosongkan app sampai tidak ada jejak akun sebelumnya di perangkat ini.
+   Salinan pengaman ikut dihapus — kalau tidak, pengguna berikutnya bisa
+   memulihkan data pemilik lama dari menu Data. */
+function bersihkanLokal(){
+  try{
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(BACKUP_KEY);
+    localStorage.removeItem(SNAP_KEY);
+    localStorage.removeItem(SESI_KEY);
+    localStorage.removeItem(PEMILIK_KEY);
+  }catch(e){}
+  cermin={}; antre=0; adaGalat="";
+  data=structuredClone(DEFAULT_DATA);
+  simpanTanpaTanda();
 }
 
 /* ---------- bentuk data: lokal ⇄ firestore ---------- */
@@ -2316,23 +2337,38 @@ async function syncMasuk(){
   const email=(document.getElementById("fb-email").value||"").trim();
   const pass=document.getElementById("fb-pass").value||"";
   if(!email||!pass){ alert("Email dan password belum diisi."); return; }
-  const lanjut=async()=>{
-    syncMode="menyambung"; perbaruiStatus();
-    try{
-      if(!fb) fb=await muatFirebase();
-      const cred=await fb.U.signInWithEmailAndPassword(fb.auth,email,pass);
-      localStorage.setItem(SESI_KEY,JSON.stringify({email}));
-      await mulaiSinkron(cred.user.uid,email,true);
-    }catch(e){
-      adaGalat=pesanGalat(e); syncMode="galat"; perbaruiStatus();
-      alert("Gagal menghubungkan: "+adaGalat);
-      render();
+  syncMode="menyambung"; perbaruiStatus();
+  let cred;
+  try{
+    if(!fb) fb=await muatFirebase();
+    cred=await fb.U.signInWithEmailAndPassword(fb.auth,email,pass);
+  }catch(e){
+    adaGalat=pesanGalat(e); syncMode="galat"; perbaruiStatus();
+    alert("Gagal masuk: "+adaGalat); render(); return;
+  }
+  const uidBaru=cred.user.uid;
+  const pemilik=localStorage.getItem(PEMILIK_KEY);
+  try{
+    if(pemilik && pemilik!==uidBaru){
+      /* Akun lain yang masuk di perangkat ini — jangan pernah digabung. */
+      bersihkanLokal();
+    } else if(!pemilik && isiLokalBerarti()){
+      /* Isi lokal belum pernah punya pemilik (misalnya hasil impor cadangan).
+         Baru di sini penggabungan masuk akal, dan hanya setelah tahu akunnya. */
+      const setuju=await tanya({judul:'Gabungkan isi perangkat ini?',aman:true,ya:'Gabungkan',
+        pesan:`Perangkat ini sudah punya isi yang belum terhubung ke akun mana pun. Isi itu akan digabung ke akun <strong>${esc(email)}</strong> — untuk bagian yang sama-sama ada, versi server yang dipakai.<br><br>Pilih Batal kalau isi ini bukan milik akun tersebut.`});
+      if(!setuju){
+        try{ await fb.U.signOut(fb.auth); }catch(e){}
+        syncMode="mati"; perbaruiStatus(); render(); return;
+      }
     }
-  };
-  if(isiLokalBerarti()){
-    konfirmasi({judul:'Gabungkan dengan data di server?',aman:true,ya:'Gabungkan',
-      pesan:'Perangkat ini sudah punya isi. Setelah tersambung, isi server dan isi perangkat ini digabung — untuk bagian yang sama-sama ada, versi server yang dipakai.<br><br>Salinan pengaman dibuat otomatis sebelum penggabungan.'},lanjut);
-  } else lanjut();
+    localStorage.setItem(PEMILIK_KEY,uidBaru);
+    localStorage.setItem(SESI_KEY,JSON.stringify({email}));
+    await mulaiSinkron(uidBaru,email,true);
+  }catch(e){
+    adaGalat=pesanGalat(e); syncMode="galat"; perbaruiStatus();
+    alert("Gagal menghubungkan: "+adaGalat); render();
+  }
 }
 
 async function syncSambungUlang(){
@@ -2345,6 +2381,10 @@ async function syncSambungUlang(){
       setTimeout(()=>res(null),8000);
     });
     if(!u){ adaGalat="Sesi berakhir, perlu login ulang."; syncMode="galat"; perbaruiStatus(); render(); return; }
+    const pemilik=localStorage.getItem(PEMILIK_KEY);
+    if(pemilik && pemilik!==u.uid) bersihkanLokal();   /* isi lokal bukan milik akun ini */
+    localStorage.setItem(PEMILIK_KEY,u.uid);
+    localStorage.setItem(SESI_KEY,JSON.stringify({email:u.email||s.email}));
     await mulaiSinkron(u.uid,u.email||s.email,false);
   }catch(e){
     adaGalat=pesanGalat(e); syncMode="galat"; perbaruiStatus(); render();
@@ -2352,13 +2392,18 @@ async function syncSambungUlang(){
 }
 
 function syncKeluar(){
-  konfirmasi({judul:'Putuskan sinkron di perangkat ini?',ya:'Putuskan',
-    pesan:'Data di perangkat ini tetap ada, begitu juga salinan di server. Anda hanya perlu login lagi untuk menyambungkannya kembali.'},
+  const belumTerkirim = antre>0;
+  konfirmasi({judul:'Keluar dari akun ini?',ya:'Keluar & kosongkan',
+    pesan: (belumTerkirim
+      ? `<strong>Masih ada ${antre} perubahan yang belum terkirim ke server.</strong> Kalau keluar sekarang, perubahan itu hilang. Sambungkan ke internet dulu sampai indikator hijau.<br><br>`
+      : '')
+      + 'Isi app di perangkat ini akan dikosongkan, termasuk salinan pengamannya, supaya tidak terbaca pengguna berikutnya.<br><br>Data Anda tetap utuh di server dan akan turun lagi saat login berikutnya.'},
     async()=>{
       unsubs.forEach(f=>{ try{ f&&f(); }catch(e){} }); unsubs=[];
       try{ if(fb&&fb.auth) await fb.U.signOut(fb.auth); }catch(e){}
-      fb=null; antre=0; adaGalat=""; syncMode="mati";
-      localStorage.removeItem(SESI_KEY); localStorage.removeItem(SNAP_KEY); cermin={};
+      fb=null; syncMode="mati";
+      bersihkanLokal();
+      budgetMonth=null; weekKey=mondayKey(new Date()); currentTab="ringkasan"; subView="jadwal";
       perbaruiStatus(); render();
     });
 }
@@ -2376,11 +2421,12 @@ function renderSyncCard(){
       <div id="sync-status">${ringkasanSync()}</div>
       <div class="week-actions section-gap" style="margin-bottom:0">
         <button class="btn btn-accent btn-sm" onclick="syncSekarang()">Kirim sekarang</button>
-        <button class="btn btn-line btn-sm" onclick="syncKeluar()">Putuskan</button>
+        <button class="btn btn-line btn-sm" onclick="syncKeluar()">Keluar</button>
       </div>
       <div class="small muted section-gap">
         Perubahan dari perangkat lain masuk sendiri dalam hitungan detik. Saat tidak ada sinyal, perubahan
         diantre di perangkat ini dan terkirim otomatis begitu online — asal ikon app-nya tidak dihapus.
+        Keluar akan mengosongkan isi app di perangkat ini; datanya tetap aman di server.
       </div>
     </div>`;
   return `
