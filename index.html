@@ -291,7 +291,7 @@
    supaya data yang sudah ada tetap terbaca. */
 const STORAGE_KEY = "peta-rencana-v1";
 const BACKUP_KEY = "peta-rencana-cadangan-otomatis";
-const APP_VERSION = "2.0";
+const APP_VERSION = "2.1";
 const DAY_NAMES = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
 const DAY_SHORT = ["Min","Sen","Sel","Rab","Kam","Jum","Sab"];
 const PRIORITIES = {
@@ -331,65 +331,18 @@ function terbilangSingkat(n){
 }
 
 const DEFAULT_DATA = {
-  budget:{
-    months:{},
-    awal:{
-      income:15800000,
-      items:[
-        {id:"kpr",name:"KPR",amount:7800000},
-        {id:"iphone",name:"iPhone",amount:1000000},
-        {id:"asuransi",name:"Asuransi",amount:650000},
-        {id:"rumah",name:"Rumah",amount:1850000},
-        {id:"ibu",name:"Ibu",amount:500000},
-        {id:"kantor",name:"Kantor",amount:1000000},
-        {id:"amal",name:"Amal",amount:400000},
-        {id:"belanja",name:"Belanja",amount:500000},
-        {id:"tabungan",name:"Balikin Tabungan",amount:500000},
-      ],
-    },
-  },
-  kpr:{
-    startYear:2026,
-    tiers:[
-      {label:"Tahun 1",years:1,amount:7781280},
-      {label:"Tahun 2 - 3",years:2,amount:8817098},
-      {label:"Tahun 4 - 10",years:7,amount:10291571},
-      {label:"Tahun 11 - 15",years:5,amount:10780646},
-    ],
-  },
-  goals:[
-    {id:"kos",name:"Bangun Kos-kosan",target:0,current:0,date:"2027-12-31",note:"Tanah sudah ada, sedang cari tukang"},
-    {id:"haji",name:"DP Haji Plus Ibu",target:0,current:0,date:"2027-12-31",note:"Daftar 2027, berangkat mengikuti antrean travel"},
-    {id:"nikah",name:"Menikah",target:0,current:0,date:"2028-12-31",note:""},
-    {id:"rumah",name:"Rumah (maks 3 M)",target:3000000000,current:0,date:"2028-12-31",note:""},
-    {id:"mobil",name:"Mobil (1,5 M)",target:1500000000,current:0,date:"2028-12-31",note:""},
-    {id:"tabungan",name:"Balikin Tabungan",target:29000000,current:0,date:"",note:"Dicicil dari pos anggaran bulanan"},
-  ],
+  budget:{ months:{}, awal:{ income:0, items:[] } },
+  kpr:{ startYear:new Date().getFullYear(), tiers:[] },
+  goals:[],
   plan:{
     work:{start:"08:00",end:"17:00",breakStart:"11:30",breakEnd:"13:30",days:[1,2,3,4,5]},
     categories:[
       {id:"c-kantor",name:"Kantor",color:"#2F5D50"},
       {id:"c-personal",name:"Personal",color:"#B8892B"},
       {id:"c-rumah",name:"Rumah",color:"#8C5A9E"},
-      {id:"c-mimpi",name:"Usaha Mimpi",color:"#A85338"},
     ],
-    taskCats:[
-      {id:"k-cr",name:"CR",color:"#1A6FA3"},
-      {id:"k-init",name:"Initiative",color:"#6A1B9A"},
-      {id:"k-issue",name:"Issue Prod",color:"#A02A12"},
-    ],
-    recurring:[
-      {id:"r1",name:"Cek seen by nurse & surgery milestone iservice",cat:"c-kantor",prio:"Critical",start:"08:00",end:"09:00",freq:"weekly",days:[1,2,3,4,5],anchor:""},
-      {id:"r2",name:"Daily Meeting",cat:"c-kantor",prio:"Medium",start:"09:00",end:"09:30",freq:"weekly",days:[1,2,3,4,5],anchor:""},
-      {id:"r3",name:"Buffer — tugas dadakan",cat:"c-kantor",prio:"Rutin",start:"09:30",end:"11:30",freq:"weekly",days:[1,2,3,4,5],anchor:""},
-      {id:"r4",name:"Belajar AI / Ideation",cat:"c-mimpi",prio:"Low",start:"13:30",end:"15:30",freq:"weekly",days:[1,2,3,4],anchor:""},
-      {id:"r5",name:"Sholat Ashar",cat:"c-personal",prio:"Rutin",start:"15:30",end:"16:00",freq:"weekly",days:[1,2,3,4,5],anchor:""},
-      {id:"r6",name:"Belajar Bahasa Inggris",cat:"c-mimpi",prio:"Low",start:"16:00",end:"17:00",freq:"weekly",days:[1,2,3,4,5],anchor:""},
-      {id:"r7",name:"Belajar AI / Ideation",cat:"c-mimpi",prio:"Low",start:"13:30",end:"14:30",freq:"weekly",days:[5],anchor:""},
-      {id:"r8",name:"Susun rencana minggu depan",cat:"c-kantor",prio:"High",start:"14:30",end:"15:30",freq:"weekly",days:[5],anchor:""},
-      {id:"r9",name:"Nyuci & gosok baju",cat:"c-rumah",prio:"Rutin",start:"","end":"",freq:"weekly",days:[0],anchor:""},
-      {id:"r10",name:"Bersihin kamar",cat:"c-rumah",prio:"Rutin",start:"",end:"",freq:"weekly",days:[6],anchor:""},
-    ],
+    taskCats:[],
+    recurring:[],
     weeks:{},
     backlog:[],
   },
@@ -554,20 +507,24 @@ function getBudget(mk){
 function totalOutcome(mk){ return getBudget(mk||monthKeyOf(new Date())).items.reduce((s,i)=>s+Number(i.amount||0),0); }
 function freeUang(mk){ const b=getBudget(mk||monthKeyOf(new Date())); return Number(b.income||0)-totalOutcome(mk); }
 function currentKprInfo(){
+  const tiers=(data.kpr&&data.kpr.tiers)||[];
+  if(!tiers.length) return null;
   const elapsed = new Date().getFullYear()-Number(data.kpr.startYear)+1;
   let acc=0;
-  for(const t of data.kpr.tiers){
-    const from=acc+1,to=acc+t.years;
-    if(elapsed<=to || t===data.kpr.tiers[data.kpr.tiers.length-1]) return {tier:t,tahunKe:Math.max(1,elapsed),from,to};
+  for(const t of tiers){
+    const from=acc+1,to=acc+(Number(t.years)||1);
+    if(elapsed<=to || t===tiers[tiers.length-1]) return {tier:t,tahunKe:Math.max(1,elapsed),from,to};
     acc=to;
   }
-  return {tier:data.kpr.tiers[0],tahunKe:1,from:1,to:data.kpr.tiers[0].years};
+  return {tier:tiers[0],tahunKe:1,from:1,to:Number(tiers[0].years)||1};
 }
 function nextKprStep(){
   const info=currentKprInfo();
-  const idx=data.kpr.tiers.indexOf(info.tier);
-  if(idx<0||idx===data.kpr.tiers.length-1) return null;
-  const next=data.kpr.tiers[idx+1];
+  if(!info) return null;
+  const tiers=data.kpr.tiers;
+  const idx=tiers.indexOf(info.tier);
+  if(idx<0||idx===tiers.length-1) return null;
+  const next=tiers[idx+1];
   return {next,yearsLeft:info.to-info.tahunKe+1,delta:next.amount-info.tier.amount};
 }
 
@@ -662,9 +619,11 @@ function renderRingkasan(){
       <div class="stat ${free<0?'warn':'good'}"><div class="label">Free Uang</div><div class="amount num">${fmtShort(free)}</div></div>
     </div>
     <div class="card section-gap">
-      <h3>KPR — Tahun ke-${info.tahunKe}</h3>
+      <h3>KPR${info?` — Tahun ke-${info.tahunKe}`:''}</h3>
+      ${info?`
       <div class="row"><span class="name">Cicilan sekarang</span><span class="val num">${fmt(info.tier.amount)}/bln</span></div>
       ${step?`<div class="row"><span class="name muted small">Naik jadi ${fmt(step.next.amount)} dalam ~${step.yearsLeft} tahun lagi (+${fmtShort(step.delta)})</span></div>`:`<div class="row"><span class="name muted small">Tier cicilan terakhir</span></div>`}
+      `:`<div class="small muted">Tabel cicilan belum diisi. Buka menu KPR untuk menambahkannya.</div>`}
     </div>
     <div class="card">
       <h3>Target Terdekat</h3>
@@ -1324,21 +1283,68 @@ function removeBudgetItem(i){
 /* ---------- KPR ---------- */
 function renderKpr(){
   const info=currentKprInfo();
-  const tiers=data.kpr.tiers.map(t=>`
-    <div class="kpr-tier ${t===info.tier?'current':''}">
-      <div><div class="tier-label">${esc(t.label)}${t===info.tier?' — sekarang':''}</div><div class="tier-sub">${t.years} tahun</div></div>
-      <div class="tier-amount num">${fmt(t.amount)}</div>
+  const tiers=(data.kpr.tiers||[]).map((t,i)=>`
+    <div class="kpr-tier ${info&&t===info.tier?'current':''}">
+      <div><div class="tier-label">${esc(t.label)}${info&&t===info.tier?' — sekarang':''}</div><div class="tier-sub">${Number(t.years)||1} tahun</div></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="tier-amount num">${fmt(t.amount)}</div>
+        <button class="btn btn-ghost btn-sm" onclick="openTierModal(${i})">Ubah</button>
+      </div>
     </div>`).join('');
+  const totalTahun=(data.kpr.tiers||[]).reduce((s,t)=>s+(Number(t.years)||0),0);
   return `
     <div class="card"><h3>Mulai KPR</h3>
       <div class="field"><span class="field-label">Tahun cicilan pertama</span>
-        <input type="number" value="${data.kpr.startYear}" oninput="updateKprStart(this.value)" /></div>
+        <input type="number" value="${data.kpr.startYear||''}" oninput="updateKprStart(this.value)" /></div>
       <div class="small muted">Dipakai untuk hitung posisi tahun ke berapa.</div>
     </div>
-    <div class="card"><h3>Tabel Cicilan 15 Tahun</h3>${tiers}</div>
+    <div class="card"><h3>Tabel Cicilan${totalTahun?` ${totalTahun} Tahun`:''}</h3>
+      ${tiers||`<div class="empty">Belum ada tier cicilan. Tambahkan sesuai tabel dari bank.</div>`}
+      <button class="btn btn-ghost btn-full section-gap" onclick="openTierModal(-1)">+ Tambah tier cicilan</button>
+    </div>
     <div class="card"><h3>Yang Perlu Diperhatikan</h3>
-      <div class="small muted">Tiap cicilan naik ke tier berikutnya, cek apakah kenaikan gaji 5%/tahun cukup menutupnya. Kalau belum, income kos-kosan perlu sudah jalan sebelum tahun step-up itu tiba.</div>
+      <div class="small muted">Tiap cicilan naik ke tier berikutnya, cek apakah kenaikan gaji tahunan cukup menutupnya. Kalau belum, sumber penghasilan tambahan perlu sudah jalan sebelum tahun kenaikan itu tiba.</div>
     </div>`;
+}
+function openTierModal(i){
+  const t = i>=0 ? data.kpr.tiers[i] : null;
+  modalState={type:'tier',idx:i};
+  openModal(`
+    <h3>${t?'Ubah Tier Cicilan':'Tier Cicilan Baru'}</h3>
+    <div class="field"><span class="field-label">Label</span>
+      <input type="text" id="kt-label" value="${t?esc(t.label):''}" placeholder="Contoh: Tahun 2 - 3" /></div>
+    <div class="field"><span class="field-label">Berlaku berapa tahun</span>
+      <input type="number" id="kt-years" value="${t?Number(t.years)||1:''}" placeholder="1" /></div>
+    <div class="field" style="margin-bottom:4px"><span class="field-label">Cicilan per bulan</span>
+      <div class="rp-wrap"><span class="rp-prefix">Rp</span>
+        <input type="text" id="kt-amount" class="rp-input num" inputmode="numeric"
+               value="${t?Number(t.amount).toLocaleString('id-ID'):''}" placeholder="0" oninput="formatRupiahGoal(this,'kt-hint')" /></div></div>
+    <div class="dur-hint" id="kt-hint">${t&&t.amount?terbilangSingkat(t.amount):'&nbsp;'}</div>
+    <div class="small muted">Urutan tier mengikuti urutan penambahan, dari tahun paling awal.</div>
+    <div class="modal-actions">
+      ${t?`<button class="btn btn-warn" onclick="hapusTier(${i})">Hapus</button>`:''}
+      <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button class="btn btn-accent" onclick="simpanTier()">Simpan</button>
+    </div>`);
+}
+function simpanTier(){
+  const label=document.getElementById("kt-label").value.trim();
+  if(!label){ alert("Label tier belum diisi."); return; }
+  const payload={
+    label,
+    years:Math.max(1,Number(document.getElementById("kt-years").value)||1),
+    amount:parseRupiah(document.getElementById("kt-amount").value),
+  };
+  if(!data.kpr.tiers) data.kpr.tiers=[];
+  if(modalState.idx>=0) Object.assign(data.kpr.tiers[modalState.idx],payload);
+  else data.kpr.tiers.push(payload);
+  save(); closeModal(); render();
+}
+function hapusTier(i){
+  const t=data.kpr.tiers[i]; if(!t) return;
+  konfirmasi({judul:'Hapus tier cicilan ini?',
+    pesan:`<strong>${esc(t.label)}</strong> — ${fmt(t.amount)}/bln`},
+    ()=>{ data.kpr.tiers.splice(i,1); save(); closeModal(); render(); });
 }
 function updateKprStart(v){ data.kpr.startYear=Number(v)||new Date().getFullYear(); save(); }
 
