@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>My Journey</title>
-<meta name="description" content="Anggaran, KPR, target hidup, dan jadwal mingguan" />
+<meta name="description" content="Anggaran, cicilan, target hidup, dan jadwal mingguan" />
 <meta name="theme-color" content="#173229" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -39,8 +39,20 @@
   #header .sub{font-size:12.5px;opacity:0.55;margin-top:4px;}
 
   #tabs{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;}
-  #tabs .inner{display:flex;overflow-x:auto;max-width:1040px;margin:0 auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
-  #tabs .inner::-webkit-scrollbar{display:none;}
+  #tabs .inner{display:flex;align-items:center;max-width:1040px;margin:0 auto;}
+  #tabs .tab-scroll{display:flex;flex:1;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  #tabs .tab-scroll::-webkit-scrollbar{display:none;}
+  .sync-dot{flex:0 0 auto;display:flex;align-items:center;gap:6px;border:none;border-left:1px solid var(--line);background:#fff;
+    padding:0 14px;align-self:stretch;font-size:11.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;}
+  .sync-dot i{width:8px;height:8px;border-radius:50%;background:#B9B6A8;display:block;}
+  .sync-dot.on i{background:var(--good);}
+  .sync-dot.on{color:var(--good);}
+  .sync-dot.wait i{background:var(--accent);animation:denyut 1.2s ease-in-out infinite;}
+  .sync-dot.wait{color:#8a6a1f;}
+  .sync-dot.off i{background:var(--warn);}
+  .sync-dot.off{color:var(--warn);}
+  @keyframes denyut{50%{opacity:.35;}}
+  @media (prefers-reduced-motion:reduce){ .sync-dot.wait i{animation:none;} }
   .tab-btn{flex:0 0 auto;padding:13px 16px;border:none;background:none;font-weight:600;font-size:12.5px;cursor:pointer;color:#9a9788;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s;}
   .tab-btn.active{color:var(--ink);border-bottom-color:var(--accent);}
 
@@ -64,7 +76,7 @@
   .stat.warn{background:var(--warn-soft);}
   .stat.good{background:var(--good-soft);}
 
-  input[type=text],input[type=number],input[type=date],input[type=time],select,textarea{
+  input[type=text],input[type=number],input[type=date],input[type=month],input[type=time],input[type=password],select,textarea{
     width:100%;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:16px;background:#fcfbf8;}
   /* 16px adalah batas aman: di bawah ini iOS Safari memperbesar tampilan
      otomatis saat kolom disentuh, dan pembesarannya tidak selalu kembali sendiri. */
@@ -111,7 +123,7 @@
   .progress-track{background:var(--sage);border-radius:6px;height:7px;margin:8px 0 6px;overflow:hidden;}
   .progress-fill{background:var(--accent);height:100%;border-radius:6px;transition:width .3s;}
 
-  .kpr-tier{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);}
+  .kpr-tier{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
   .kpr-tier:last-child{border-bottom:none;}
   .kpr-tier.current{background:var(--accent-soft);margin:0 -16px;padding:10px 16px;border-radius:10px;border-bottom:none;}
   .tier-label{font-size:13px;font-weight:600;}
@@ -161,6 +173,28 @@
   .goal-row{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--line);}
   .goal-row:last-of-type{border-bottom:none;}
   .goal-row.done .goal-text{text-decoration:line-through;color:var(--ink-soft);}
+  .goal-row .goal-text{flex:1;min-width:0;}
+  .goal-row .urut{display:flex;gap:2px;}
+  .goal-row .urut .icon-btn{font-size:13px;padding:4px 6px;}
+  .goal-row .urut .icon-btn:disabled{opacity:.25;cursor:default;}
+  .goal-row.utama .goal-text{font-weight:600;}
+  .rule-status{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--sage);color:var(--ink-soft);}
+  .rule-status.jeda{background:var(--accent-soft);color:#8a6a1f;}
+  .rule-status.selesai{background:var(--line);color:var(--ink-soft);}
+  .task.nonaktif .task-body{opacity:.6;}
+  .kpr-tier>div:first-child{flex:1;min-width:0;}
+  .kpr-tier .tier-amount{white-space:nowrap;}
+  .baris-jeda .field{flex:1;min-width:0;}
+  .baris-jeda input{width:100%;min-width:0;}
+  .baris-jeda .icon-btn{flex:0 0 auto;}
+  .periode-box{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px;}
+  .periode-box .judul{font-size:12.5px;font-weight:600;margin-bottom:2px;}
+  .cic-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .cic-head .nama{font-family:'Fraunces',serif;font-size:15px;font-weight:600;}
+  .cic-amount{font-size:20px;font-weight:600;margin-top:6px;}
+  .cic-bar{height:6px;background:var(--line);border-radius:999px;overflow:hidden;margin:10px 0 6px;}
+  .cic-bar span{display:block;height:100%;background:var(--accent);}
+  .cic-tahap{margin-top:10px;border-top:1px solid var(--line);padding-top:4px;}
   .goal-text{flex:1;font-size:13.5px;}
 
   .empty{text-align:center;padding:18px 10px;color:var(--ink-soft);font-size:12.5px;}
@@ -269,15 +303,15 @@
   <div class="sub" id="header-sub">—</div>
 </div></div>
 
-<div id="tabs"><div class="inner">
+<div id="tabs"><div class="inner"><div class="tab-scroll">
   <button class="tab-btn" data-tab="ringkasan" onclick="setTab('ringkasan')">Ringkasan</button>
   <button class="tab-btn" data-tab="goals" onclick="setTab('goals')">Target</button>
-  <button class="tab-btn" data-tab="kpr" onclick="setTab('kpr')">KPR</button>
+  <button class="tab-btn" data-tab="kpr" onclick="setTab('kpr')">Cicilan</button>
   <button class="tab-btn" data-tab="anggaran" onclick="setTab('anggaran')">Anggaran</button>
   <button class="tab-btn" data-tab="dompet" onclick="setTab('dompet')">Dompet</button>
   <button class="tab-btn" data-tab="tugas" onclick="setTab('tugas')">Jadwal</button>
   <button class="tab-btn" data-tab="data" onclick="setTab('data')">Data</button>
-</div></div>
+</div><button id="sync-dot" class="sync-dot" onclick="setTab('data')" aria-label="Status sinkron"><i></i><span>Lokal</span></button></div></div>
 
 <div id="content"></div>
 
@@ -291,7 +325,7 @@
    supaya data yang sudah ada tetap terbaca. */
 const STORAGE_KEY = "peta-rencana-v1";
 const BACKUP_KEY = "peta-rencana-cadangan-otomatis";
-const APP_VERSION = "2.2";
+const APP_VERSION = "2.4";
 const DAY_NAMES = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
 const DAY_SHORT = ["Min","Sen","Sel","Rab","Kam","Jum","Sab"];
 const PRIORITIES = {
@@ -333,6 +367,7 @@ function terbilangSingkat(n){
 const DEFAULT_DATA = {
   budget:{ months:{}, awal:{ income:0, items:[] } },
   kpr:{ startYear:new Date().getFullYear(), tiers:[] },
+  cicilan:[],
   goals:[],
   plan:{
     work:{start:"08:00",end:"17:00",breakStart:"11:30",breakEnd:"13:30",days:[1,2,3,4,5]},
@@ -398,6 +433,8 @@ function load(){
     if(!raw.budget.awal) raw.budget.awal=structuredClone(DEFAULT_DATA.budget.awal);
     if(!raw.trxCats || !raw.trxCats.length) raw.trxCats = structuredClone(TRX_CATS_DEFAULT);
     if(!raw.periode) raw.periode = [];
+    migrasiKprKeCicilan(raw);
+    rapikanSemuaCicilan(raw);
     return raw;
   }catch(e){ return structuredClone(DEFAULT_DATA); }
 }
@@ -494,38 +531,90 @@ function shiftMonthKey(mk,n){
   const d=new Date(y,m-1+n,1);
   return monthKeyOf(d);
 }
+/* Income bisa lebih dari satu sumber. b.income selalu dijaga = total semua sumber,
+   supaya bagian lain app (Ringkasan, Free Uang) tidak perlu tahu soal sumber. */
+function pastikanIncomes(b){
+  if(!b) return b;
+  if(!Array.isArray(b.incomes)){
+    const v=Number(b.income)||0;
+    b.incomes = v ? [{id:"gaji",name:"Gaji",amount:v}] : [];
+  }
+  b.income = b.incomes.reduce((s,x)=>s+(Number(x.amount)||0),0);
+  return b;
+}
 function getBudget(mk){
   if(!mk) mk=budgetMonth||monthKeyOf(new Date());
   const M=data.budget.months;
   if(!M[mk]){
     const sebelum=Object.keys(M).filter(k=>k<mk).sort();
-    const src = sebelum.length ? M[sebelum[sebelum.length-1]] : data.budget.awal;
-    M[mk]={income:Number(src.income)||0,items:structuredClone(src.items||[]),warisan:true};
+    const src = pastikanIncomes(sebelum.length ? M[sebelum[sebelum.length-1]] : data.budget.awal);
+    M[mk]={income:Number(src.income)||0,incomes:structuredClone(src.incomes||[]),items:structuredClone(src.items||[]),warisan:true};
   }
-  return M[mk];
+  return pastikanIncomes(M[mk]);
 }
 function totalOutcome(mk){ return getBudget(mk||monthKeyOf(new Date())).items.reduce((s,i)=>s+Number(i.amount||0),0); }
 function freeUang(mk){ const b=getBudget(mk||monthKeyOf(new Date())); return Number(b.income||0)-totalOutcome(mk); }
-function currentKprInfo(){
-  const tiers=(data.kpr&&data.kpr.tiers)||[];
-  if(!tiers.length) return null;
-  const elapsed = new Date().getFullYear()-Number(data.kpr.startYear)+1;
-  let acc=0;
-  for(const t of tiers){
-    const from=acc+1,to=acc+(Number(t.years)||1);
-    if(elapsed<=to || t===tiers[tiers.length-1]) return {tier:t,tahunKe:Math.max(1,elapsed),from,to};
-    acc=to;
-  }
-  return {tier:tiers[0],tahunKe:1,from:1,to:Number(tiers[0].years)||1};
+/* ---------- cicilan ----------
+   Satu cicilan = {id, name, mulai:"YYYY-MM", tahap:[{label, bulan, amount}]}.
+   Cicilan nominal tetap (HP, kartu kredit) cukup satu tahap; KPR bisa bertahap. */
+function selisihBulan(a,b){ const [ay,am]=a.split("-").map(Number), [by,bm]=b.split("-").map(Number); return (by-ay)*12+(bm-am); }
+function fmtBlnPendek(mk){ return parseDate(mk+"-01").toLocaleDateString("id-ID",{month:"short",year:"numeric"}); }
+function fmtDurasi(n){
+  n=Number(n)||0; const t=Math.floor(n/12), b=n%12;
+  if(!t) return `${b} bulan`; if(!b) return `${t} tahun`; return `${t} tahun ${b} bulan`;
 }
-function nextKprStep(){
-  const info=currentKprInfo();
-  if(!info) return null;
-  const tiers=data.kpr.tiers;
-  const idx=tiers.indexOf(info.tier);
-  if(idx<0||idx===tiers.length-1) return null;
-  const next=tiers[idx+1];
-  return {next,yearsLeft:info.to-info.tahunKe+1,delta:next.amount-info.tier.amount};
+/* Tiap tahap menyimpan bulan dari–sampai. Field "bulan" dan c.mulai tetap ditulis
+   (hasil hitungan) supaya versi lama yang masih terbuka tetap membaca dengan benar. */
+function rapikanCicilan(c){
+  if(!c) return c;
+  if(!Array.isArray(c.tahap)) c.tahap=[];
+  let cur=c.mulai||monthKeyOf(new Date());
+  c.tahap.forEach(t=>{
+    if(!t.dari||!t.sampai){ const n=Math.max(1,Number(t.bulan)||1); t.dari=cur; t.sampai=shiftMonthKey(cur,n-1); }
+    t.bulan=Math.max(1,selisihBulan(t.dari,t.sampai)+1);
+    cur=shiftMonthKey(t.sampai,1);
+  });
+  c.tahap.sort((x,y)=>x.dari<y.dari?-1:x.dari>y.dari?1:0);
+  if(c.tahap.length) c.mulai=c.tahap[0].dari;
+  return c;
+}
+function rapikanSemuaCicilan(d){
+  if(!Array.isArray(d.cicilan)) return false;
+  const sebelum=JSON.stringify(d.cicilan);
+  d.cicilan.forEach(rapikanCicilan);
+  return JSON.stringify(d.cicilan)!==sebelum;
+}
+function infoCicilan(c,mk){
+  mk=mk||monthKeyOf(new Date());
+  const tahap=c.tahap||[];
+  if(!tahap.length) return {status:"kosong",total:0};
+  const total=tahap.reduce((s,t)=>s+(Number(t.bulan)||0),0);
+  const awal=tahap[0].dari, akhir=tahap[tahap.length-1].sampai;
+  const dasar={total,awal,akhir,selesaiMk:akhir};
+  if(mk<awal) return {...dasar,status:"belum",ke:0,amount:0,tahap:tahap[0],idx:0};
+  if(mk>akhir) return {...dasar,status:"lunas",amount:0};
+  let ke=0;
+  tahap.forEach(t=>{ if(t.dari<=mk) ke+=selisihBulan(t.dari, mk<t.sampai?mk:t.sampai)+1; });
+  const idx=tahap.findIndex(t=>t.dari<=mk && mk<=t.sampai);
+  if(idx<0){
+    const next=tahap.find(t=>t.dari>mk);
+    return {...dasar,status:"jeda",ke,amount:0,next,naikMk:next&&next.dari,sisa:total-ke};
+  }
+  const t=tahap[idx], next=tahap[idx+1]||null;
+  return {...dasar,status:"aktif",ke,tahap:t,idx,amount:Number(t.amount)||0,next,naikMk:next?next.dari:null,sisa:total-ke+1};
+}
+function totalCicilan(mk){ return (data.cicilan||[]).reduce((s,c)=>s+(infoCicilan(c,mk).amount||0),0); }
+/* KPR lama (data.kpr, per tahun) dipindah sekali jadi cicilan pertama.
+   Id-nya tetap "kpr" supaya semua perangkat menghasilkan isi yang sama persis. */
+function migrasiKprKeCicilan(d){
+  if(!Array.isArray(d.cicilan)) d.cicilan=[];
+  if(d.migrasiKpr || d.cicilan.length) return false;
+  const k=d.kpr, tiers=(k&&k.tiers)||[];
+  if(!tiers.length) return false;
+  d.cicilan=[rapikanCicilan({id:"kpr",name:"KPR",mulai:`${Number(k.startYear)||new Date().getFullYear()}-01`,
+    tahap:tiers.map(t=>({label:t.label||"",bulan:(Number(t.years)||1)*12,amount:Number(t.amount)||0}))})];
+  d.migrasiKpr=true;
+  return true;
 }
 
 /* ---------- week model ---------- */
@@ -535,14 +624,43 @@ function getWeek(key){
   w.goals=w.goals||[]; w.tasks=w.tasks||[]; w.dayNotes=w.dayNotes||{}; w.recDone=w.recDone||{}; w.recSkip=w.recSkip||{};
   return w;
 }
+const FREQ_N = {weekly:1, biweekly:2, triweekly:3, fourweekly:4};
+const FREQ_LABEL = {weekly:"Tiap minggu", biweekly:"2 minggu sekali", triweekly:"3 minggu sekali", fourweekly:"4 minggu sekali", monthly:"Tiap bulan"};
+const NTH_LABEL = {"1":"pertama","2":"kedua","3":"ketiga","4":"keempat","-1":"terakhir"};
+function ruleDijedaPada(rule,dateStr){
+  return (rule.jeda||[]).some(j=>j.dari && dateStr>=j.dari && (!j.sampai || dateStr<=j.sampai));
+}
 function ruleActiveOn(rule,dateStr,wkKey){
-  const wd = parseDate(dateStr).getDay();
-  if(!rule.days.includes(wd)) return false;
-  if(rule.freq==="biweekly"){
-    const anchor = rule.anchor || wkKey;
-    return Math.abs(weeksBetween(anchor,wkKey))%2===0;
+  if(rule.mulai && dateStr<rule.mulai) return false;
+  if(rule.sampai && dateStr>rule.sampai) return false;
+  if(ruleDijedaPada(rule,dateStr)) return false;
+  const d=parseDate(dateStr), wd=d.getDay();
+  if(!(rule.days||[]).includes(wd)) return false;
+  if(rule.freq==="monthly"){
+    const tgl=d.getDate(), nth=Number(rule.nth)||1;
+    if(nth===-1){ const akhir=new Date(d.getFullYear(),d.getMonth()+1,0).getDate(); return tgl+7>akhir; }
+    return Math.ceil(tgl/7)===nth;
   }
-  return true;
+  const n=FREQ_N[rule.freq]||1;
+  if(n===1) return true;
+  const anchor=rule.anchor||wkKey;
+  return ((weeksBetween(anchor,wkKey)%n)+n)%n===0;
+}
+function freqText(r){
+  if(r.freq==="monthly") return `tiap bulan, minggu ${NTH_LABEL[String(r.nth||1)]}`;
+  return (FREQ_LABEL[r.freq]||"Tiap minggu").toLowerCase();
+}
+/* Status rutinitas dilihat dari hari ini */
+function statusRule(r){
+  const hari=dateKey(new Date());
+  if(r.sampai && r.sampai<hari) return {kelas:"selesai",teks:`Selesai ${fmtDayShort(r.sampai)}`,aktif:false};
+  if(r.mulai && r.mulai>hari) return {kelas:"jeda",teks:`Mulai ${fmtDayShort(r.mulai)}`,aktif:false};
+  const j=(r.jeda||[]).find(x=>x.dari && hari>=x.dari && (!x.sampai || hari<=x.sampai));
+  if(j) return {kelas:"jeda",teks: j.sampai?`Dijeda s.d. ${fmtDayShort(j.sampai)}`:"Dijeda",aktif:false,dijeda:true};
+  const nanti=(r.jeda||[]).filter(x=>x.dari && x.dari>hari).sort((a,b)=>a.dari<b.dari?-1:1)[0];
+  if(nanti) return {kelas:"",teks:`Jeda mulai ${fmtDayShort(nanti.dari)}`,aktif:true};
+  if(r.sampai) return {kelas:"",teks:`s.d. ${fmtDayShort(r.sampai)}`,aktif:true};
+  return null;
 }
 function tasksForDay(wkKey,dateStr){
   const w=getWeek(wkKey);
@@ -583,7 +701,7 @@ function render(){
     ringkasan:["Ringkasan","Gambaran cepat semua rencana"],
     dompet:["Dompet","Catatan pengeluaran harian"],
     anggaran:["Anggaran Bulanan","Income, pos pengeluaran, sisa uang"],
-    kpr:["Jadwal KPR","Cicilan per tahun, 15 tahun"],
+    kpr:["Cicilan","Semua cicilan berjalan dan tahapannya"],
     goals:["Peta Target","2027 - 2040"],
     tugas:["Jadwal Mingguan","Tugas, rutinitas, dan target minggu ini"],
     data:["Data","Cadangkan, pindahkan, atau pulihkan"],
@@ -607,7 +725,9 @@ function render(){
 function renderRingkasan(){
   const mkNow=monthKeyOf(new Date());
   const b=getBudget(mkNow);
-  const free=freeUang(mkNow), info=currentKprInfo(), step=nextKprStep();
+  const free=freeUang(mkNow);
+  const cicAktif=(data.cicilan||[]).map(c=>({c,i:infoCicilan(c,mkNow)})).filter(x=>x.i.status==="aktif");
+  const naikBerikut=cicAktif.filter(x=>x.i.next).sort((a,b)=>a.i.naikMk<b.i.naikMk?-1:1)[0];
   const upcoming=data.goals.filter(g=>g.date).map(g=>({...g,s:sisaWaktu(g.date)})).sort((a,b)=>a.s.hari-b.s.hari).slice(0,3);
   const wk=getWeek(weekKey);
   let open=0;
@@ -619,11 +739,13 @@ function renderRingkasan(){
       <div class="stat ${free<0?'warn':'good'}"><div class="label">Free Uang</div><div class="amount num">${fmtShort(free)}</div></div>
     </div>
     <div class="card section-gap">
-      <h3>KPR${info?` — Tahun ke-${info.tahunKe}`:''}</h3>
-      ${info?`
-      <div class="row"><span class="name">Cicilan sekarang</span><span class="val num">${fmt(info.tier.amount)}/bln</span></div>
-      ${step?`<div class="row"><span class="name muted small">Naik jadi ${fmt(step.next.amount)} dalam ~${step.yearsLeft} tahun lagi (+${fmtShort(step.delta)})</span></div>`:`<div class="row"><span class="name muted small">Tier cicilan terakhir</span></div>`}
-      `:`<div class="small muted">Tabel cicilan belum diisi. Buka menu KPR untuk menambahkannya.</div>`}
+      <h3>Cicilan Bulan Ini</h3>
+      ${cicAktif.length?`
+      ${cicAktif.map(x=>`<div class="row"><span class="name">${esc(x.c.name)}<span class="small muted" style="display:block">Bulan ke-${x.i.ke} dari ${x.i.total}</span></span><span class="val num">${fmt(x.i.amount)}</span></div>`).join('')}
+      <div class="row"><span class="name"><strong>Total</strong></span><span class="val num">${fmt(totalCicilan(mkNow))}/bln</span></div>
+      ${naikBerikut?`<div class="small muted section-gap">${esc(naikBerikut.c.name)} naik jadi ${fmt(naikBerikut.i.next.amount)} mulai ${fmtMonth(naikBerikut.i.naikMk)} (+${fmtShort(naikBerikut.i.next.amount-naikBerikut.i.amount)}).</div>`:''}
+      `:`<div class="small muted">Belum ada cicilan berjalan.</div>`}
+      <button class="btn btn-ghost btn-full section-gap" onclick="setTab('kpr')">Buka cicilan →</button>
     </div>
     <div class="card">
       <h3>Target Terdekat</h3>
@@ -643,6 +765,7 @@ function renderRingkasan(){
       <h3>Minggu Ini</h3>
       <div class="row"><span class="name">Tugas belum selesai</span><span class="val num">${open}</span></div>
       <div class="row"><span class="name">Target mingguan belum tercapai</span><span class="val num">${goalsOpen}</span></div>
+      ${(()=>{ const u=wk.goals.find(g=>!g.done); return u?`<div class="row"><span class="name small">Fokus utama: <strong>${esc(u.name)}</strong></span></div>`:''; })()}
       <button class="btn btn-ghost btn-full section-gap" onclick="setTab('tugas')">Buka jadwal →</button>
     </div>`;
 }
@@ -1184,6 +1307,9 @@ function lanjutkanImpor(masuk){
   }
   if(masuk.budget) data.budget=masuk.budget;
   if(masuk.kpr) data.kpr=masuk.kpr;
+  if(Array.isArray(masuk.cicilan)){ data.cicilan=masuk.cicilan; data.migrasiKpr=true; }
+  else migrasiKprKeCicilan(data);
+  rapikanSemuaCicilan(data);
   if(Array.isArray(masuk.goals)) data.goals=masuk.goals;
   if(masuk.plan) data.plan=masuk.plan;
   if(Array.isArray(masuk.trxCats)&&masuk.trxCats.length) data.trxCats=masuk.trxCats;
@@ -1225,12 +1351,22 @@ function renderAnggaran(){
     ${iniBulanIni?'':`<button class="btn btn-line btn-sm btn-full" style="margin-bottom:12px" onclick="budgetKeMonthIni()">Kembali ke bulan ini</button>`}
 
     <div class="card"><h3>Income ${fmtMonth(mk)}</h3>
-      <div class="rp-wrap">
-        <span class="rp-prefix">Rp</span>
-        <input type="text" class="rp-input num" inputmode="numeric"
-               value="${Number(b.income).toLocaleString('id-ID')}" oninput="updateIncome(this)" />
+      ${b.incomes.map((it,i)=>`
+      <div class="row">
+        <input type="text" style="max-width:50%" value="${esc(it.name)}" placeholder="Sumber" oninput="updateIncomeName(${i},this.value)" />
+        <div class="rp-wrap" style="max-width:42%">
+          <span class="rp-prefix" style="font-size:11px">Rp</span>
+          <input type="text" class="rp-input num" style="font-size:16px !important;text-align:right" inputmode="numeric"
+                 value="${Number(it.amount).toLocaleString('id-ID')}" oninput="updateIncomeAmount(${i},this)" />
+        </div>
+        <button class="icon-btn" onclick="removeIncome(${i})">✕</button>
+      </div>`).join('') || `<div class="empty">Belum ada sumber income bulan ini.</div>`}
+      <button class="btn btn-ghost btn-full section-gap" onclick="addIncome()">+ Tambah sumber income</button>
+      <div class="row section-gap" style="border-top:1px solid var(--line)">
+        <span class="name"><strong>Total income</strong></span>
+        <span class="val num" id="stat-income">${fmt(b.income)}</span>
       </div>
-      <div class="small muted section-gap">Angka bulan ini saja. Bulan lain bisa diisi berbeda — misalnya bulan THR atau bulan ada bonus.</div>
+      <div class="small muted section-gap">Angka bulan ini saja. Bulan lain bisa diisi berbeda — misalnya bulan THR, bonus, atau hasil kos-kosan.</div>
     </div>
 
     <div class="card"><h3>Pos Pengeluaran</h3>${rows}
@@ -1249,11 +1385,27 @@ function renderAnggaran(){
       <div class="small muted section-gap">Dompet mencatat pengeluaran harian; angka di sini belum tentu mencakup pos otomatis seperti KPR atau asuransi.</div>
     </div>`;
 }
-function updateIncome(el){
+function updateIncomeName(i,v){
+  const b=getBudget(budgetMonth); if(!b.incomes[i]) return;
+  b.incomes[i].name=v; delete b.warisan; save();
+}
+function updateIncomeAmount(i,el){
   const v=parseRupiah(el.value);
   el.value = v ? v.toLocaleString("id-ID") : "";
-  const b=getBudget(budgetMonth); b.income=v; delete b.warisan;
+  const b=getBudget(budgetMonth); if(!b.incomes[i]) return;
+  b.incomes[i].amount=v; delete b.warisan; pastikanIncomes(b);
   save(); refreshBudgetStats();
+}
+function addIncome(){
+  const b=getBudget(budgetMonth);
+  b.incomes.push({id:uid('i'),name:b.incomes.length?'Sumber baru':'Gaji',amount:0});
+  delete b.warisan; pastikanIncomes(b); save(); render();
+}
+function removeIncome(i){
+  const b=getBudget(budgetMonth); const it=b.incomes[i]; if(!it) return;
+  konfirmasi({judul:'Hapus sumber income ini?',
+    pesan:`<strong>${esc(it.name)}</strong> — ${fmt(it.amount)}<br><br>Hanya dihapus dari ${fmtMonth(budgetMonth)}. Bulan lain tidak terpengaruh.`},
+    ()=>{ const bb=getBudget(budgetMonth); bb.incomes.splice(i,1); delete bb.warisan; pastikanIncomes(bb); save(); render(); });
 }
 function updateBudgetItem(i,f,v){
   const b=getBudget(budgetMonth); b.items[i][f]=v; delete b.warisan; save();
@@ -1268,6 +1420,8 @@ function refreshBudgetStats(){
   const o=document.getElementById("stat-out"), f=document.getElementById("stat-free");
   if(o) o.textContent=fmtShort(totalOutcome(budgetMonth));
   if(f) f.textContent=fmtShort(freeUang(budgetMonth));
+  const inc=document.getElementById("stat-income");
+  if(inc) inc.textContent=fmt(getBudget(budgetMonth).income);
 }
 function addBudgetItem(){
   const b=getBudget(budgetMonth); b.items.push({id:uid('b'),name:'Pos baru',amount:0}); delete b.warisan; save(); render();
@@ -1280,73 +1434,168 @@ function removeBudgetItem(i){
     ()=>{ const bb=getBudget(budgetMonth); bb.items.splice(i,1); delete bb.warisan; save(); render(); });
 }
 
-/* ---------- KPR ---------- */
+/* ---------- CICILAN ---------- */
 function renderKpr(){
-  const info=currentKprInfo();
-  const tiers=(data.kpr.tiers||[]).map((t,i)=>`
-    <div class="kpr-tier ${info&&t===info.tier?'current':''}">
-      <div><div class="tier-label">${esc(t.label)}${info&&t===info.tier?' — sekarang':''}</div><div class="tier-sub">${Number(t.years)||1} tahun</div></div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="tier-amount num">${fmt(t.amount)}</div>
-        <button class="btn btn-ghost btn-sm" onclick="openTierModal(${i})">Ubah</button>
-      </div>
-    </div>`).join('');
-  const totalTahun=(data.kpr.tiers||[]).reduce((s,t)=>s+(Number(t.years)||0),0);
+  const mk=monthKeyOf(new Date());
+  const list=data.cicilan||[];
+  const kartu=list.map(c=>{
+    const inf=infoCicilan(c,mk);
+    const persen = inf.total ? Math.min(100,Math.max(0,Math.round(((inf.status==="lunas"?inf.total:Math.max(0,inf.ke-1))/inf.total)*100))) : 0;
+    let status="";
+    if(inf.status==="aktif") status=`Bulan ke-${inf.ke} dari ${inf.total} · sisa ${fmtDurasi(inf.sisa)}`;
+    else if(inf.status==="jeda") status=`Tidak ada cicilan bulan ini · lanjut ${fmtMonth(inf.naikMk)}`;
+    else if(inf.status==="belum") status=`Mulai ${fmtMonth(inf.awal)}`;
+    else if(inf.status==="lunas") status=`Lunas sejak ${fmtMonth(shiftMonthKey(inf.selesaiMk,1))}`;
+    else status="Tahapan belum diisi";
+    const tahap=(c.tahap||[]).map((t,i)=>{
+      const dari=t.dari, smp=t.sampai;
+      const kini = inf.status==="aktif" && inf.idx===i;
+      return `
+        <div class="kpr-tier ${kini?'current':''}">
+          <div><div class="tier-label">${esc(t.label||`Tahap ${i+1}`)}${kini?' — sekarang':''}</div>
+            <div class="tier-sub">${fmtBlnPendek(dari)} – ${fmtBlnPendek(smp)} · ${fmtDurasi(t.bulan)}</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="tier-amount num">${fmt(t.amount)}</div>
+            <button class="btn btn-ghost btn-sm" onclick="openTahapModal('${c.id}',${i})">Ubah</button>
+          </div>
+        </div>`;
+    }).join('');
+    return `
+      <div class="card">
+        <div class="cic-head">
+          <div><div class="nama">${esc(c.name)}</div><div class="small muted">${status}</div>
+            ${inf.total?`<div class="small muted">Total ${fmtDurasi(inf.total)} · ${fmtMonth(inf.awal)} – ${fmtMonth(inf.akhir)}</div>`:''}</div>
+          <button class="btn btn-line btn-sm" onclick="openCicilanModal('${c.id}')">Ubah</button>
+        </div>
+        <div class="cic-amount num">${inf.status==="aktif"?fmt(inf.amount)+'<span class="small muted" style="font-family:Inter,sans-serif;font-weight:500">/bln</span>':'—'}</div>
+        ${inf.total?`<div class="cic-bar"><span style="width:${persen}%"></span></div>`:''}
+        ${inf.status==="aktif"&&inf.next?`<div class="small muted">Naik jadi ${fmt(inf.next.amount)} mulai ${fmtMonth(inf.naikMk)} (+${fmtShort(inf.next.amount-inf.amount)})</div>`:''}
+        ${inf.status==="aktif"&&!inf.next?`<div class="small muted">Lunas setelah ${fmtMonth(inf.selesaiMk)}</div>`:''}
+        <details class="cic-tahap" ${(c.tahap||[]).length>1?'':''}>
+          <summary class="small" style="cursor:pointer;padding:6px 0;font-weight:600">Tahapan cicilan (${(c.tahap||[]).length})</summary>
+          ${tahap||`<div class="empty">Belum ada tahapan.</div>`}
+          <button class="btn btn-ghost btn-full section-gap" onclick="openTahapModal('${c.id}',-1)">+ Tambah tahap</button>
+        </details>
+      </div>`;
+  }).join('');
   return `
-    <div class="card"><h3>Mulai KPR</h3>
-      <div class="field"><span class="field-label">Tahun cicilan pertama</span>
-        <input type="number" value="${data.kpr.startYear||''}" oninput="updateKprStart(this.value)" /></div>
-      <div class="small muted">Dipakai untuk hitung posisi tahun ke berapa.</div>
+    <div class="total-card">
+      <div class="label">Total cicilan ${fmtMonth(mk)}</div>
+      <div class="amount">${fmt(totalCicilan(mk))}</div>
+      <div class="count">${list.filter(c=>infoCicilan(c,mk).status==="aktif").length} cicilan berjalan</div>
     </div>
-    <div class="card"><h3>Tabel Cicilan${totalTahun?` ${totalTahun} Tahun`:''}</h3>
-      ${tiers||`<div class="empty">Belum ada tier cicilan. Tambahkan sesuai tabel dari bank.</div>`}
-      <button class="btn btn-ghost btn-full section-gap" onclick="openTierModal(-1)">+ Tambah tier cicilan</button>
-    </div>
-    <div class="card"><h3>Yang Perlu Diperhatikan</h3>
-      <div class="small muted">Tiap cicilan naik ke tier berikutnya, cek apakah kenaikan gaji tahunan cukup menutupnya. Kalau belum, sumber penghasilan tambahan perlu sudah jalan sebelum tahun kenaikan itu tiba.</div>
+    ${kartu||`<div class="card"><div class="empty">Belum ada cicilan. Tambahkan KPR, kartu kredit, HP, kendaraan, atau cicilan lain.</div></div>`}
+    <button class="btn btn-accent btn-full" onclick="openCicilanModal(null)">+ Tambah cicilan</button>
+    <div class="card section-gap"><h3>Yang Perlu Diperhatikan</h3>
+      <div class="small muted">Setiap kali ada cicilan yang naik tahap, cek apakah kenaikan penghasilan cukup menutupnya. Total cicilan di atas belum otomatis masuk anggaran — samakan dengan pos di menu Anggaran.</div>
     </div>`;
 }
-function openTierModal(i){
-  const t = i>=0 ? data.kpr.tiers[i] : null;
-  modalState={type:'tier',idx:i};
+function cariCicilan(id){ return (data.cicilan||[]).find(c=>c.id===id); }
+/* Dua kolom bulan + keterangan lama yang dihitung otomatis */
+function rentangInput(prefix,dari,sampai){
+  return `<div class="field-row">
+      <div class="field" style="margin-bottom:4px"><span class="field-label">Dari bulan</span>
+        <input type="month" id="${prefix}-dari" value="${dari||''}" oninput="hintRentang('${prefix}')" /></div>
+      <div class="field" style="margin-bottom:4px"><span class="field-label">Sampai bulan</span>
+        <input type="month" id="${prefix}-sampai" value="${sampai||''}" oninput="hintRentang('${prefix}')" /></div>
+    </div>
+    <div class="dur-hint" id="${prefix}-lama-hint">${teksRentang(dari,sampai)}</div>`;
+}
+function teksRentang(dari,sampai){
+  const ok=/^\d{4}-\d{2}$/;
+  if(!ok.test(dari||"")||!ok.test(sampai||"")) return "Isi bulan awal dan akhir — lamanya dihitung otomatis.";
+  const n=selisihBulan(dari,sampai)+1;
+  if(n<1) return "Bulan akhir harus sama atau setelah bulan awal.";
+  return n>=12 ? `Total ${n} bulan (${fmtDurasi(n)})` : `Total ${n} bulan`;
+}
+function hintRentang(prefix){
+  const h=document.getElementById(prefix+"-lama-hint");
+  if(h) h.textContent=teksRentang(document.getElementById(prefix+"-dari").value,document.getElementById(prefix+"-sampai").value);
+}
+function bacaRentang(prefix){
+  const dari=document.getElementById(prefix+"-dari").value, sampai=document.getElementById(prefix+"-sampai").value;
+  if(!/^\d{4}-\d{2}$/.test(dari)||!/^\d{4}-\d{2}$/.test(sampai)){ alert("Bulan awal dan akhir belum diisi."); return null; }
+  if(sampai<dari){ alert("Bulan akhir harus sama atau setelah bulan awal."); return null; }
+  return {dari,sampai};
+}
+function openCicilanModal(id){
+  const c=id?cariCicilan(id):null;
+  modalState={type:'cicilan',id};
+  const mkIni=monthKeyOf(new Date());
   openModal(`
-    <h3>${t?'Ubah Tier Cicilan':'Tier Cicilan Baru'}</h3>
-    <div class="field"><span class="field-label">Label</span>
-      <input type="text" id="kt-label" value="${t?esc(t.label):''}" placeholder="Contoh: Tahun 2 - 3" /></div>
-    <div class="field"><span class="field-label">Berlaku berapa tahun</span>
-      <input type="number" id="kt-years" value="${t?Number(t.years)||1:''}" placeholder="1" /></div>
+    <h3>${c?'Ubah Cicilan':'Cicilan Baru'}</h3>
+    <div class="field"><span class="field-label">Nama</span>
+      <input type="text" id="ci-name" value="${c?esc(c.name):''}" placeholder="Contoh: Kartu Kredit BCA, iPhone, KPR" /></div>
+    ${c?`<div class="small muted">Bulan dan nominal diatur per tahap, di bagian Tahapan cicilan.</div>`:`
+    <div class="field" style="margin-bottom:4px"><span class="field-label">Cicilan per bulan</span>
+      <div class="rp-wrap"><span class="rp-prefix">Rp</span>
+        <input type="text" id="ci-amount" class="rp-input num" inputmode="numeric" placeholder="0" oninput="formatRupiahGoal(this,'ci-hint')" /></div></div>
+    <div class="dur-hint" id="ci-hint">&nbsp;</div>
+    ${rentangInput('ci',mkIni,shiftMonthKey(mkIni,11))}
+    <div class="small muted">Kalau nominalnya naik bertahap seperti KPR, simpan dulu tahap pertama, lalu tambah tahap berikutnya.</div>`}
+    <div class="modal-actions">
+      ${c?`<button class="btn btn-warn" onclick="hapusCicilan('${c.id}')">Hapus</button>`:''}
+      <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button class="btn btn-accent" onclick="simpanCicilan()">Simpan</button>
+    </div>`);
+}
+function simpanCicilan(){
+  const name=document.getElementById("ci-name").value.trim();
+  if(!name){ alert("Nama cicilan belum diisi."); return; }
+  if(!Array.isArray(data.cicilan)) data.cicilan=[];
+  if(modalState.id){
+    const c=cariCicilan(modalState.id); if(!c) return;
+    c.name=name;
+  }else{
+    const r=bacaRentang('ci'); if(!r) return;
+    const amount=parseRupiah(document.getElementById("ci-amount").value);
+    data.cicilan.push(rapikanCicilan({id:uid('ci'),name,mulai:r.dari,tahap:[{label:"",dari:r.dari,sampai:r.sampai,amount}]}));
+  }
+  data.migrasiKpr=true; save(); closeModal(); render();
+}
+function hapusCicilan(id){
+  const c=cariCicilan(id); if(!c) return;
+  konfirmasi({judul:'Hapus cicilan ini?',pesan:`<strong>${esc(c.name)}</strong> beserta semua tahapannya.`},
+    ()=>{ data.cicilan=data.cicilan.filter(x=>x.id!==id); data.migrasiKpr=true; save(); closeModal(); render(); });
+}
+function openTahapModal(cid,i){
+  const c=cariCicilan(cid); if(!c) return;
+  const t = i>=0 ? c.tahap[i] : null;
+  modalState={type:'tahap',cid,idx:i};
+  const terakhir=(c.tahap||[])[c.tahap.length-1];
+  const dariBaru = terakhir ? shiftMonthKey(terakhir.sampai,1) : monthKeyOf(new Date());
+  openModal(`
+    <h3>${t?'Ubah Tahap':'Tahap Baru'} — ${esc(c.name)}</h3>
+    <div class="field"><span class="field-label">Label (opsional)</span>
+      <input type="text" id="kt-label" value="${t?esc(t.label||''):''}" placeholder="Contoh: Tahun 2 - 3" /></div>
     <div class="field" style="margin-bottom:4px"><span class="field-label">Cicilan per bulan</span>
       <div class="rp-wrap"><span class="rp-prefix">Rp</span>
         <input type="text" id="kt-amount" class="rp-input num" inputmode="numeric"
                value="${t?Number(t.amount).toLocaleString('id-ID'):''}" placeholder="0" oninput="formatRupiahGoal(this,'kt-hint')" /></div></div>
     <div class="dur-hint" id="kt-hint">${t&&t.amount?terbilangSingkat(t.amount):'&nbsp;'}</div>
-    <div class="small muted">Urutan tier mengikuti urutan penambahan, dari tahun paling awal.</div>
+    ${t?rentangInput('kt',t.dari,t.sampai):rentangInput('kt',dariBaru,shiftMonthKey(dariBaru,11))}
     <div class="modal-actions">
-      ${t?`<button class="btn btn-warn" onclick="hapusTier(${i})">Hapus</button>`:''}
+      ${t?`<button class="btn btn-warn" onclick="hapusTahap('${cid}',${i})">Hapus</button>`:''}
       <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
-      <button class="btn btn-accent" onclick="simpanTier()">Simpan</button>
+      <button class="btn btn-accent" onclick="simpanTahap()">Simpan</button>
     </div>`);
 }
-function simpanTier(){
-  const label=document.getElementById("kt-label").value.trim();
-  if(!label){ alert("Label tier belum diisi."); return; }
-  const payload={
-    label,
-    years:Math.max(1,Number(document.getElementById("kt-years").value)||1),
-    amount:parseRupiah(document.getElementById("kt-amount").value),
-  };
-  if(!data.kpr.tiers) data.kpr.tiers=[];
-  if(modalState.idx>=0) Object.assign(data.kpr.tiers[modalState.idx],payload);
-  else data.kpr.tiers.push(payload);
-  save(); closeModal(); render();
+function simpanTahap(){
+  const c=cariCicilan(modalState.cid); if(!c) return;
+  const r=bacaRentang('kt'); if(!r) return;
+  const bentrok=(c.tahap||[]).find((t,j)=>j!==modalState.idx && !(r.sampai<t.dari || r.dari>t.sampai));
+  if(bentrok){ alert(`Rentang ini bertabrakan dengan tahap ${bentrok.label?'"'+bentrok.label+'" ':''}${fmtMonth(bentrok.dari)} – ${fmtMonth(bentrok.sampai)}. Ubah bulannya supaya tidak tumpang tindih.`); return; }
+  const payload={label:document.getElementById("kt-label").value.trim(),dari:r.dari,sampai:r.sampai,amount:parseRupiah(document.getElementById("kt-amount").value)};
+  if(!Array.isArray(c.tahap)) c.tahap=[];
+  if(modalState.idx>=0) Object.assign(c.tahap[modalState.idx],payload); else c.tahap.push(payload);
+  rapikanCicilan(c);
+  data.migrasiKpr=true; save(); closeModal(); render();
 }
-function hapusTier(i){
-  const t=data.kpr.tiers[i]; if(!t) return;
-  konfirmasi({judul:'Hapus tier cicilan ini?',
-    pesan:`<strong>${esc(t.label)}</strong> — ${fmt(t.amount)}/bln`},
-    ()=>{ data.kpr.tiers.splice(i,1); save(); closeModal(); render(); });
+function hapusTahap(cid,i){
+  const c=cariCicilan(cid); const t=c&&c.tahap[i]; if(!t) return;
+  konfirmasi({judul:'Hapus tahap ini?',pesan:`<strong>${esc(t.label||`Tahap ${i+1}`)}</strong> — ${fmt(t.amount)}/bln`},
+    ()=>{ c.tahap.splice(i,1); rapikanCicilan(c); data.migrasiKpr=true; save(); closeModal(); render(); });
 }
-function updateKprStart(v){ data.kpr.startYear=Number(v)||new Date().getFullYear(); save(); }
 
 /* ---------- TARGET ---------- */
 function renderGoals(){
@@ -1452,12 +1701,19 @@ function renderJadwal(){
   const end=addDays(weekKey,6);
   const isThis = weekKey===mondayKey(new Date());
   const w=getWeek(weekKey);
-  const goals=w.goals.length?w.goals.map(g=>`
-      <div class="goal-row ${g.done?'done':''}">
+  const goals=w.goals.length?w.goals.map((g,i)=>`
+      <div class="goal-row ${g.done?'done':''} ${i===0?'utama':''}">
         <div class="checkbox ${g.done?'checked':''}" onclick="toggleWeekGoal('${g.id}')">${g.done?'✓':''}</div>
         <div class="goal-text">${esc(g.name)}</div>
-        <button class="icon-btn" onclick="removeWeekGoal('${g.id}')">✕</button>
-      </div>`).join(''):`<div class="empty">Belum ada target minggu ini.</div>`;
+        <div class="urut">
+          <button class="icon-btn" onclick="moveWeekGoal('${g.id}',-1)" ${i===0?'disabled':''} aria-label="Naikkan">↑</button>
+          <button class="icon-btn" onclick="moveWeekGoal('${g.id}',1)" ${i===w.goals.length-1?'disabled':''} aria-label="Turunkan">↓</button>
+          <button class="icon-btn" onclick="openWeekGoalModal('${g.id}')" aria-label="Ubah">✎</button>
+          <button class="icon-btn" onclick="removeWeekGoal('${g.id}')" aria-label="Hapus">✕</button>
+        </div>
+      </div>`).join('')
+      +(w.goals.length>1?`<div class="small muted" style="margin-top:6px">Paling atas = paling utama. Atur urutan dengan ↑ ↓.</div>`:'')
+      :`<div class="empty">Belum ada target minggu ini.</div>`;
 
   let days="";
   const todayKey=dateKey(new Date());
@@ -1619,6 +1875,30 @@ function addWeekGoal(){
   getWeek(weekKey).goals.push({id:uid('wg'),name:v,done:false});
   save(); render();
 }
+function moveWeekGoal(id,dir){
+  const w=getWeek(weekKey); const i=w.goals.findIndex(x=>x.id===id); const j=i+dir;
+  if(i<0||j<0||j>=w.goals.length) return;
+  [w.goals[i],w.goals[j]]=[w.goals[j],w.goals[i]];
+  save(); render();
+}
+function openWeekGoalModal(id){
+  const g=getWeek(weekKey).goals.find(x=>x.id===id); if(!g) return;
+  modalState={type:'weekgoal',id};
+  openModal(`
+    <h3>Ubah Target Mingguan</h3>
+    <div class="field"><span class="field-label">Target</span>
+      <input type="text" id="wg-name" value="${esc(g.name)}" onkeydown="if(event.key==='Enter')simpanWeekGoal()" /></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button class="btn btn-accent" onclick="simpanWeekGoal()">Simpan</button>
+    </div>`);
+}
+function simpanWeekGoal(){
+  const v=document.getElementById("wg-name").value.trim();
+  if(!v){ alert("Target belum diisi."); return; }
+  const g=getWeek(weekKey).goals.find(x=>x.id===modalState.id); if(!g) return;
+  g.name=v; save(); closeModal(); render();
+}
 function toggleWeekGoal(id){
   const g=getWeek(weekKey).goals.find(x=>x.id===id); if(!g) return;
   g.done=!g.done; save(); render();
@@ -1699,19 +1979,23 @@ function renderRutin(){
   const rows=data.plan.recurring.length?data.plan.recurring.map(r=>{
     const c=catById(r.cat), p=PRIORITIES[r.prio]||PRIORITIES["Rutin"];
     const kt=taskCatById(r.kat);
-    const dayTxt=r.days.slice().sort().map(d=>DAY_SHORT[d]).join(", ");
+    const dayTxt=(r.days||[]).slice().sort((a,b)=>((a+6)%7)-((b+6)%7)).map(d=>DAY_SHORT[d]).join(", ");
+    const st=statusRule(r);
     return `
-      <div class="task">
+      <div class="task ${st&&!st.aktif?'nonaktif':''}">
         <div class="task-body">
-          <div class="task-name">${esc(r.name)}</div>
+          <div class="task-name">${esc(r.name)} ${st?`<span class="rule-status ${st.kelas}">${st.teks}</span>`:''}</div>
           <div class="task-meta">
             <span class="chip" style="background:${p.bg};color:${p.fg}">${r.prio}</span>
             <span class="chip" style="background:${c.color}1A;color:${c.color}">${esc(c.name)}</span>
             ${kt?`<span class="chip" style="background:${kt.color};color:#fff">${esc(kt.name)}</span>`:''}
-            <span class="time-text">${r.start&&r.end?r.start+'–'+r.end+' · ':''}${dayTxt} · ${r.freq==='biweekly'?'2 minggu sekali':'tiap minggu'}</span>
+            <span class="time-text">${r.start&&r.end?r.start+'–'+r.end+' · ':''}${dayTxt} · ${freqText(r)}</span>
           </div>
         </div>
         <div class="task-actions">
+          ${st&&st.dijeda
+            ? `<button class="btn btn-line btn-sm" onclick="lanjutkanRule('${r.id}')">Lanjutkan</button>`
+            : (!st||st.aktif ? `<button class="btn btn-line btn-sm" onclick="jedaRule('${r.id}')">Jeda</button>` : '')}
           <button class="icon-btn" onclick="openRuleModal('${r.id}')">✎</button>
           <button class="icon-btn" onclick="removeRule('${r.id}')">✕</button>
         </div>
@@ -1720,10 +2004,26 @@ function renderRutin(){
   return `
     <div class="card">
       <h3>Tugas Rutin</h3>
-      <div class="small muted" style="margin-bottom:8px">Sekali diatur, otomatis muncul tiap minggu tanpa perlu ditulis ulang. Tandai ↻ di jadwal.</div>
+      <div class="small muted" style="margin-bottom:8px">Sekali diatur, otomatis muncul sesuai pengulangannya tanpa perlu ditulis ulang. Tandai ↻ di jadwal. Rutinitas yang ditunda bisa dijeda — riwayat minggu yang sudah lewat tetap utuh.</div>
       ${rows}
       <button class="btn btn-accent btn-full section-gap" onclick="openRuleModal(null)">+ Tambah rutinitas</button>
     </div>`;
+}
+function jedaRule(id){
+  const r=data.plan.recurring.find(x=>x.id===id); if(!r) return;
+  const hari=dateKey(new Date());
+  konfirmasi({judul:'Jeda rutinitas ini?',aman:true,ya:'Jeda mulai hari ini',
+    pesan:`<strong>${esc(r.name)}</strong> tidak akan muncul di jadwal mulai hari ini sampai Anda menekan Lanjutkan.<br><br>Minggu yang sudah lewat tidak berubah. Kalau sudah tahu tanggal lanjutnya, atur lewat ✎.`},
+    ()=>{ r.jeda=(r.jeda||[]).concat({dari:hari,sampai:""}); save(); render(); });
+}
+function lanjutkanRule(id){
+  const r=data.plan.recurring.find(x=>x.id===id); if(!r) return;
+  const hari=dateKey(new Date()), kemarin=addDays(hari,-1);
+  r.jeda=(r.jeda||[]).map(j=>{
+    if(!(j.dari && hari>=j.dari && (!j.sampai || hari<=j.sampai))) return j;
+    return j.dari>kemarin ? null : {...j,sampai:kemarin};   /* jeda yang dimulai hari ini dibatalkan saja */
+  }).filter(Boolean);
+  save(); render();
 }
 function removeRule(id){
   const r=data.plan.recurring.find(x=>x.id===id); if(!r) return;
@@ -1947,13 +2247,34 @@ function openRuleModal(ruleId){
     <div class="field"><span class="field-label">Hari</span><div class="daypick" id="m-days">${dayBtns}</div></div>
     <div class="field"><span class="field-label">Pengulangan</span>
       <select id="m-freq" onchange="toggleAnchor()">
-        <option value="weekly" ${r&&r.freq==='weekly'?'selected':''}>Tiap minggu</option>
-        <option value="biweekly" ${r&&r.freq==='biweekly'?'selected':''}>2 minggu sekali</option>
+        ${Object.entries(FREQ_LABEL).map(([v,l])=>`<option value="${v}" ${(r?r.freq:'weekly')===v?'selected':''}>${l}</option>`).join('')}
       </select></div>
-    <div class="field" id="anchor-field" style="display:${r&&r.freq==='biweekly'?'block':'none'}">
-      <span class="field-label">Mulai dari minggu</span>
+    <div class="field" id="anchor-field" style="display:${r&&FREQ_N[r.freq]>1?'block':'none'}">
+      <span class="field-label">Patokan minggu pertama</span>
       <input type="date" id="m-anchor" value="${r&&r.anchor?r.anchor:weekKey}" />
-      <div class="small muted" style="margin-top:4px">Dipakai sebagai patokan minggu ganjil/genap.</div>
+      <div class="small muted" style="margin-top:4px">Rutinitas muncul di minggu ini, lalu berulang sesuai jaraknya.</div>
+    </div>
+    <div class="field" id="nth-field" style="display:${r&&r.freq==='monthly'?'block':'none'}">
+      <span class="field-label">Minggu ke berapa tiap bulan</span>
+      <select id="m-nth">
+        ${["1","2","3","4","-1"].map(v=>`<option value="${v}" ${String(r&&r.nth||1)===v?'selected':''}>Minggu ${NTH_LABEL[v]}</option>`).join('')}
+      </select>
+      <div class="small muted" style="margin-top:4px">Contoh: hari Kamis + minggu pertama = Kamis pertama setiap bulan.</div>
+    </div>
+
+    <div class="periode-box">
+      <div class="judul">Masa berlaku</div>
+      <div class="small muted" style="margin-bottom:8px">Kosongkan kalau rutinitas ini berlaku seterusnya.</div>
+      <div class="field-row">
+        <div class="field" style="margin-bottom:0"><span class="field-label">Berlaku mulai</span><input type="date" id="m-mulai" value="${r&&r.mulai||''}" /></div>
+        <div class="field" style="margin-bottom:0"><span class="field-label">Berlaku sampai</span><input type="date" id="m-sampai" value="${r&&r.sampai||''}" /></div>
+      </div>
+    </div>
+    <div class="periode-box">
+      <div class="judul">Jeda sementara</div>
+      <div class="small muted" style="margin-bottom:8px">Rutinitas tidak muncul di rentang ini, lalu kembali sendiri. Kosongkan "sampai" kalau belum tahu kapan lanjut.</div>
+      <div id="m-jeda">${(r&&r.jeda||[]).map(j=>barisJeda(j)).join('')}</div>
+      <button class="btn btn-ghost btn-sm" onclick="tambahBarisJeda()">+ Tambah jeda</button>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
@@ -1964,7 +2285,18 @@ function openRuleModal(ruleId){
 function toggleRuleDay(btn){ btn.classList.toggle("on"); }
 function toggleAnchor(){
   const f=document.getElementById("m-freq").value;
-  document.getElementById("anchor-field").style.display = f==='biweekly'?'block':'none';
+  document.getElementById("anchor-field").style.display = FREQ_N[f]>1?'block':'none';
+  document.getElementById("nth-field").style.display = f==='monthly'?'block':'none';
+}
+function barisJeda(j){
+  return `<div class="field-row baris-jeda" style="align-items:flex-end">
+    <div class="field"><span class="field-label">Dari</span><input type="date" class="j-dari" value="${j&&j.dari||''}" /></div>
+    <div class="field"><span class="field-label">Sampai</span><input type="date" class="j-sampai" value="${j&&j.sampai||''}" /></div>
+    <button class="icon-btn" style="margin-bottom:18px" onclick="this.parentElement.remove()" aria-label="Hapus jeda">✕</button>
+  </div>`;
+}
+function tambahBarisJeda(){
+  document.getElementById("m-jeda").insertAdjacentHTML("beforeend",barisJeda({dari:dateKey(new Date()),sampai:""}));
 }
 function saveRuleModal(){
   const name=document.getElementById("m-name").value.trim();
@@ -1974,8 +2306,20 @@ function saveRuleModal(){
   const start=document.getElementById("m-start").value, end=document.getElementById("m-end").value;
   if(start&&end&&toMin(end)<=toMin(start)){ alert("Jam selesai harus lebih besar dari jam mulai."); return; }
   const freq=document.getElementById("m-freq").value;
-  const anchor= freq==='biweekly' ? mondayKey(parseDate(document.getElementById("m-anchor").value||weekKey)) : "";
-  const payload={name,cat:document.getElementById("m-cat").value,kat:document.getElementById("m-kat").value,prio:document.getElementById("m-prio").value,start,end,days,freq,anchor};
+  const anchor= FREQ_N[freq]>1 ? mondayKey(parseDate(document.getElementById("m-anchor").value||weekKey)) : "";
+  const nth = freq==='monthly' ? Number(document.getElementById("m-nth").value)||1 : null;
+  const mulai=document.getElementById("m-mulai").value||"", sampai=document.getElementById("m-sampai").value||"";
+  if(mulai&&sampai&&sampai<mulai){ alert("Tanggal \"sampai\" masa berlaku harus setelah tanggal mulai."); return; }
+  const jeda=[];
+  for(const row of document.querySelectorAll("#m-jeda .baris-jeda")){
+    const dari=row.querySelector(".j-dari").value||"", smp=row.querySelector(".j-sampai").value||"";
+    if(!dari && !smp) continue;
+    if(!dari){ alert("Setiap jeda perlu tanggal \"dari\"."); return; }
+    if(smp && smp<dari){ alert("Tanggal \"sampai\" jeda harus setelah tanggal \"dari\"."); return; }
+    jeda.push({dari,sampai:smp});
+  }
+  const payload={name,cat:document.getElementById("m-cat").value,kat:document.getElementById("m-kat").value,prio:document.getElementById("m-prio").value,start,end,days,freq,anchor,mulai,sampai,jeda};
+  if(nth!==null) payload.nth=nth;
   if(modalState.ruleId){
     const r=data.plan.recurring.find(x=>x.id===modalState.ruleId);
     Object.assign(r,payload);
@@ -2006,7 +2350,7 @@ const FB_VER    = "10.12.2";
 const SESI_KEY  = "my-journey-sesi";
 const SNAP_KEY  = "my-journey-cermin";
 const PEMILIK_KEY = "my-journey-pemilik";   /* UID pemilik isi localStorage saat ini */
-const MAP_DALAM = new Set(["pos","tasks","wg","dayNotes","recDone","recSkip"]);
+const MAP_DALAM = new Set(["pos","inc","tasks","wg","dayNotes","recDone","recSkip"]);
 
 let fb = null;
 let unsubs = [];
@@ -2048,16 +2392,22 @@ function bersihkanLokal(){
 
 /* ---------- bentuk data: lokal ⇄ firestore ---------- */
 function keAnggaran(b){
-  const pos={}, ord=[];
+  pastikanIncomes(b);
+  const pos={}, ord=[], inc={}, incOrd=[];
   (b.items||[]).forEach(it=>{ ord.push(it.id); pos[it.id]={n:it.name||"",a:Number(it.amount)||0}; });
-  const o={income:Number(b.income)||0, ord, pos};
-  if(b.warisan) o.warisan=true;
-  return o;
+  (b.incomes||[]).forEach(it=>{ incOrd.push(it.id); inc[it.id]={n:it.name||"",a:Number(it.amount)||0}; });
+  /* warisan selalu ditulis (true/false): field tingkat atas tidak pernah dihapus saat sinkron */
+  return {income:Number(b.income)||0, ord, pos, incOrd, inc, warisan:!!b.warisan};
 }
 function dariAnggaran(d){
   const ord = Array.isArray(d.ord) ? d.ord : Object.keys(d.pos||{});
   const items = ord.filter(id=>d.pos&&d.pos[id]).map(id=>({id, name:d.pos[id].n||"", amount:Number(d.pos[id].a)||0}));
   const o={income:Number(d.income)||0, items};
+  if(d.inc){
+    const io = Array.isArray(d.incOrd) ? d.incOrd : Object.keys(d.inc);
+    o.incomes = io.filter(id=>d.inc[id]).map(id=>({id, name:d.inc[id].n||"", amount:Number(d.inc[id].a)||0}));
+  }
+  pastikanIncomes(o);   /* dokumen lama tanpa sumber → jadi satu sumber "Gaji" */
   if(d.warisan) o.warisan=true;
   return o;
 }
@@ -2082,6 +2432,7 @@ function petaLokal(){
   const m={};
   m["meta/target"]     = {goals:data.goals||[]};
   m["meta/kpr"]        = {kpr:data.kpr||{}};
+  m["meta/cicilan"]    = {cicilan:data.cicilan||[], migrasiKpr:!!data.migrasiKpr};
   m["meta/rutinitas"]  = {recurring:data.plan.recurring||[]};
   m["meta/bakide"]     = {backlog:data.plan.backlog||[]};
   m["meta/pengaturan"] = {work:data.plan.work||{}, categories:data.plan.categories||[],
@@ -2115,6 +2466,7 @@ function terapkanMasuk(path,d){
   if(kol==="meta"){
     if(id==="target")     data.goals = Array.isArray(d.goals)?d.goals:[];
     if(id==="kpr")        data.kpr = d.kpr||data.kpr;
+    if(id==="cicilan"){ data.cicilan = Array.isArray(d.cicilan)?structuredClone(d.cicilan):[]; data.migrasiKpr = !!d.migrasiKpr; }
     if(id==="rutinitas")  data.plan.recurring = Array.isArray(d.recurring)?d.recurring:[];
     if(id==="bakide")     data.plan.backlog = Array.isArray(d.backlog)?d.backlog:[];
     if(id==="pengaturan"){
@@ -2147,6 +2499,7 @@ function bedaField(lama,baru){
       const va=a?a[k]:undefined, vb=b?b[k]:undefined;
       if(kanonik(va)===kanonik(vb)) return;
       const j=jalur.concat(k);
+      if(jalur.length===0 && vb===undefined) return;   /* field dari versi lain — jangan dihapus */
       if(jalur.length===0 && MAP_DALAM.has(k) &&
          va && typeof va==="object" && !Array.isArray(va) &&
          vb && typeof vb==="object" && !Array.isArray(vb)){
@@ -2185,6 +2538,7 @@ function dorongPerubahan(){
   }
   for(const path in cermin){
     if(path in peta) continue;
+    if(path.startsWith("meta/")) continue;   /* dokumen meta dari versi lain — jangan dihapus */
     delete cermin[path]; n++;
     try{ tandaiAntre(fb.F.deleteDoc(refPath(path))); }catch(e){ adaGalat=pesanGalat(e); }
   }
@@ -2228,6 +2582,10 @@ function pasangPendengar(){
         }
         terapkanMasuk(path,isi); cermin[path]=sisi; berubah=true;
       });
+      if(nama==="meta"){
+        const m1=migrasiKprKeCicilan(data), m2=rapikanSemuaCicilan(data);   /* data versi 2.3 → dari–sampai */
+        if(m1||m2){ berubah=true; if(!faseAwal) jadwalkanDorong(); }
+      }
       if(berubah){ simpanTanpaTanda(); simpanCermin(); renderNanti(); }
       perbaruiStatus(snap.metadata.fromCache);
       if(pertama){ pertama=false; selesai(stop); }
@@ -2243,29 +2601,39 @@ function namaBagian(path){
   if(kol==="trx") return "Transaksi dompet";
   if(kol==="anggaran") return "Anggaran "+(id==="__awal"?"(pola awal)":id);
   if(kol==="jadwal") return "Jadwal minggu "+id;
-  return {target:"Target",kpr:"KPR",rutinitas:"Rutinitas",bakide:"Bak Ide",pengaturan:"Pengaturan"}[id]||id;
+  return {target:"Target",kpr:"KPR (lama)",cicilan:"Cicilan",rutinitas:"Rutinitas",bakide:"Bak Ide",pengaturan:"Pengaturan"}[id]||id;
 }
 
 /* ---------- status ---------- */
 function perbaruiStatus(dariCache){
   if(dariCache!==undefined) syncMode = dariCache ? "offline" : (adaGalat?"galat":"aman");
   else if(syncAktif() && syncMode!=="menyambung") syncMode = adaGalat ? "galat" : (syncMode==="offline"?"offline":"aman");
+  if(syncAktif() && typeof navigator!=="undefined" && navigator.onLine===false) syncMode="offline";
+  renderSyncDot();
   const pill=document.getElementById("sync-pill");
-  if(pill){
-    let teks="", kelas="";
-    if(!syncAktif()) teks="";
-    else if(syncMode==="menyambung") teks="Menyambung…";
-    else if(antre>0) teks = syncMode==="offline" ? `Offline — ${antre} perubahan menunggu` : "Menyimpan…";
-    else if(syncMode==="offline") teks="Offline — tersimpan di perangkat";
-    else if(syncMode==="galat"){ teks="Gagal sinkron"; kelas="galat"; }
-    else { teks="Tersinkron"; kelas="aman"; }
-    pill.textContent=teks;
-    pill.className="sync-pill "+kelas;
-    pill.style.display = teks ? "block" : "none";
-    if(kelas==="aman") setTimeout(()=>{ if(pill.className.indexOf("aman")>=0) pill.style.display="none"; },1800);
-  }
+  if(pill) pill.style.display="none";   /* digantikan penanda tetap di bilah menu */
   const box=document.getElementById("sync-status");
   if(box) box.innerHTML=ringkasanSync();
+}
+/* Penanda tetap di ujung kanan bilah menu, terlihat dari semua halaman */
+function renderSyncDot(){
+  const el=document.getElementById("sync-dot"); if(!el) return;
+  let kelas="", teks="Lokal", judul="Belum masuk akun — data hanya ada di perangkat ini";
+  const punyaSesi=!!sesi();
+  if(punyaSesi && !syncAktif()){
+    if(syncMode==="galat"){ kelas="off"; teks="Terputus"; judul=adaGalat||"Sinkron terputus"; }
+    else { kelas="wait"; teks="Menyambung"; judul="Sedang menyambung ke server"; }
+  } else if(syncAktif()){
+    if(syncMode==="menyambung"){ kelas="wait"; teks="Menyambung"; judul="Sedang menyambung ke server"; }
+    else if(syncMode==="galat"){ kelas="off"; teks="Terputus"; judul=adaGalat||"Sinkron gagal"; }
+    else if(syncMode==="offline"){ kelas="wait"; teks= antre>0 ? `Offline · ${antre}` : "Offline";
+      judul = antre>0 ? `${antre} perubahan menunggu dikirim saat online` : "Offline — perubahan disimpan di perangkat"; }
+    else if(antre>0){ kelas="wait"; teks="Menyimpan"; judul="Mengirim perubahan ke server"; }
+    else { kelas="on"; teks="Sinkron"; judul="Tersambung, realtime"; }
+  }
+  el.className="sync-dot "+kelas;
+  el.title=judul; el.setAttribute("aria-label","Status sinkron: "+judul);
+  el.querySelector("span").textContent=teks;
 }
 function ringkasanSync(){
   const s=sesi();
@@ -2484,6 +2852,8 @@ syncSambungUlang();
    Yang perlu didorong saat app kembali aktif hanyalah perubahan lokal yang belum terkirim. */
 function saatKembaliAktif(){ if(syncAktif()) dorongPerubahan(); }
 window.addEventListener("focus",saatKembaliAktif);
+window.addEventListener("offline",()=>{ if(syncAktif()){ syncMode="offline"; perbaruiStatus(); } });
+window.addEventListener("online",()=>{ if(syncAktif()){ syncMode="aman"; perbaruiStatus(); dorongPerubahan(); } });
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden) saatKembaliAktif(); });
 if(jumlahMigrasi>0){
   setTimeout(()=>{
