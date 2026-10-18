@@ -216,8 +216,12 @@
   .task.mtg .task-body{cursor:pointer;}
   .task.mtg.absen .task-body{opacity:.5;}
   .task.mtg.absen .task-name{text-decoration:line-through;}
-  .tanda-bentrok{display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:700;line-height:1;
-    color:#fff;background:var(--warn);border-radius:20px;padding:3px 7px;}
+  .tanda-bentrok{display:inline-flex;align-items:center;justify-content:center;width:22px;height:20px;border:none;
+    font-size:11px;line-height:1;color:#fff;background:var(--warn);border-radius:20px;padding:0;cursor:pointer;}
+  .pop-bentrok{display:none;position:fixed;z-index:130;max-width:260px;background:var(--ink);color:#fff;
+    font-size:12.5px;line-height:1.45;padding:9px 12px;border-radius:10px;box-shadow:0 6px 18px rgba(23,50,41,0.28);}
+  .pop-bentrok .judul{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;opacity:.65;margin-bottom:3px;}
+  .task.mtg .checkbox.mati{opacity:.35;cursor:not-allowed;border-style:dashed;}
   .time-text.bentrok{color:var(--warn);font-weight:600;}
   .mtg-info{font-size:13px;line-height:1.5;margin-bottom:12px;}
   .mtg-info>div{margin-bottom:6px;}
@@ -351,6 +355,7 @@
 
 <button id="fab" style="display:none" onclick="openTrxModal(null)">＋ Tambah Pengeluaran</button>
 <div id="sync-pill" class="sync-pill" style="display:none"></div>
+<div id="pop-bentrok" class="pop-bentrok" role="tooltip" onclick="event.stopPropagation()"></div>
 
 <div id="modal-bg" onclick="if(event.target===this)closeModal()"><div id="modal"></div></div>
 
@@ -359,7 +364,7 @@
    supaya data yang sudah ada tetap terbaca. */
 const STORAGE_KEY = "peta-rencana-v1";
 const BACKUP_KEY = "peta-rencana-cadangan-otomatis";
-const APP_VERSION = "3.1";
+const APP_VERSION = "3.2";
 const DAY_NAMES = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
 const DAY_SHORT = ["Min","Sen","Sel","Rab","Kam","Jum","Sab"];
 const PRIORITIES = {
@@ -669,7 +674,10 @@ function setStatusMtg(k,st){
   if(w.mtg[k]===st) delete w.mtg[k]; else w.mtg[k]=st;
   save();
 }
-function toggleMtg(k){ setStatusMtg(k,"s"); render(); }
+function toggleMtg(k){
+  const e=cariMtg(k); if(!e || statusMtg(e)==="x") return;   /* tidak hadir → ceklis terkunci */
+  setStatusMtg(k,"s"); render();
+}
 function getWeek(key){
   if(!data.plan.weeks[key]) data.plan.weeks[key]={goals:[],tasks:[],dayNotes:{},recDone:{},recSkip:{}};
   const w=data.plan.weeks[key];
@@ -1494,8 +1502,29 @@ function bentrokHari(dateStr){
   return hasil;
 }
 function tandaBentrok(g){
-  return g ? `<span class="tanda-bentrok" title="Bentrok dengan ${esc(g.lain.join(", "))}" aria-label="Bentrok dengan ${esc(g.lain.join(", "))}">⚠ ${g.no}</span>` : "";
+  if(!g) return "";
+  const lain=esc(JSON.stringify(g.lain));
+  return `<button type="button" class="tanda-bentrok" data-lain="${lain}" onclick="tampilBentrok(event,this)" aria-label="Bentrok dengan ${esc(g.lain.join(", "))}">⚠</button>`;
 }
+/* Popup kecil di dekat ikon ⚠; tertutup saat mengetuk di tempat lain atau menggulir */
+function tampilBentrok(ev,el){
+  ev.stopPropagation();
+  const pop=document.getElementById("pop-bentrok");
+  if(pop.style.display==="block" && pop._dari===el){ tutupBentrok(); return; }
+  let lain=[]; try{ lain=JSON.parse(el.dataset.lain||"[]"); }catch(e){}
+  pop.innerHTML=`<div class="judul">Bentrok dengan</div>${lain.map(n=>`<div>• ${esc(n)}</div>`).join('')}`;
+  pop._dari=el; pop._buka=Date.now(); pop.style.display="block";
+  const r=el.getBoundingClientRect(), lebar=pop.offsetWidth, tinggi=pop.offsetHeight;
+  let x=r.left+r.width/2-lebar/2; x=Math.max(10,Math.min(x,window.innerWidth-lebar-10));
+  let y=r.bottom+6; if(y+tinggi>window.innerHeight-10) y=r.top-tinggi-6;
+  pop.style.left=x+"px"; pop.style.top=y+"px";
+}
+function tutupBentrok(){ const p=document.getElementById("pop-bentrok"); if(p){ p.style.display="none"; p._dari=null; } }
+document.addEventListener("click",tutupBentrok);
+window.addEventListener("scroll",()=>{
+  const p=document.getElementById("pop-bentrok");
+  if(p && Date.now()-(p._buka||0)>400) tutupBentrok();   /* abaikan gulir kecil sesaat setelah ketuk */
+},{passive:true});
 
 /* ---------- detail meeting ---------- */
 function openMtgModal(k){
@@ -1518,7 +1547,7 @@ function openMtgModal(k){
         ${e.batal?'<span class="chip" style="background:var(--warn-soft);color:var(--warn)">Dibatalkan</span>':''}
         ${kalBaru(e)?'<span class="chip chip-baru">Baru</span>':''}</div>
       ${e.lokasi?`<div>📍 ${esc(e.lokasi)}</div>`:''}
-      ${g?`<div style="color:var(--warn);font-weight:600">⚠ ${g.no} · Bentrok dengan ${esc(g.lain.join(", "))}</div>`:''}
+      ${g?`<div style="color:var(--warn);font-weight:600">⚠ Bentrok dengan ${esc(g.lain.join(", "))}</div>`:''}
       ${e.org?`<div>Penyelenggara: <strong>${esc(e.org)}</strong></div>`:''}
     </div>
     <span class="field-label">Peserta${e.pesertaN?` (${e.pesertaN})`:''}</span>
@@ -1528,14 +1557,14 @@ function openMtgModal(k){
      :`<div class="small muted" style="margin-bottom:12px">Kalender ini tidak menyertakan daftar peserta.</div>`}
     ${e.seharian?'':`
     <span class="field-label">Penanda di My Journey</span>
-    <div class="mtg-pilih">
-      <button class="btn ${st==='s'?'btn-accent':'btn-line'}" onclick="pilihStatusMtg('${k}','s')">✓ Sudah terlaksana</button>
-      <button class="btn ${st==='x'?'btn-warn':'btn-line'}" onclick="pilihStatusMtg('${k}','x')">Tidak perlu hadir</button>
-    </div>
-    <div class="small muted">${st?'Ketuk lagi tombol yang aktif untuk menghapus penanda. ':''}Penanda ini hanya di My Journey — undangan di ${s.jenis==="google"?"Google":"Outlook"} tidak berubah. Untuk menolak undangan, tetap lewat ${s.jenis==="google"?"Google Calendar":"Outlook"}.</div>`}
+    ${st==='x'
+      ? `<div class="small" style="margin-bottom:8px">Ditandai <strong>tidak perlu hadir</strong>. Tidak dihitung di jam kantor dan tidak dianggap bentrok.</div>
+         <div class="mtg-pilih"><button class="btn btn-line" onclick="pilihStatusMtg('${k}','x')">Hadir</button></div>`
+      : `<div class="mtg-pilih"><button class="btn btn-line" onclick="pilihStatusMtg('${k}','x')">Tidak perlu hadir</button></div>`}
+    <div class="small muted">Penanda ini hanya di My Journey — undangan di ${s.jenis==="google"?"Google":"Outlook"} tidak berubah. Untuk menolak undangan, tetap lewat ${s.jenis==="google"?"Google Calendar":"Outlook"}.</div>`}
     <div class="modal-actions section-gap">
-      ${e.link && !lewat && !e.batal && st!=='x'?`<a class="btn btn-accent" href="${esc(e.link)}" target="_blank" rel="noopener">Gabung</a>`:''}
       <button class="btn btn-ghost" onclick="closeModal()">Tutup</button>
+      ${e.link && !lewat && !e.batal && st!=='x'?`<a class="btn btn-accent" href="${esc(e.link)}" target="_blank" rel="noopener">Gabung</a>`:''}
     </div>`);
 }
 function pilihStatusMtg(k,st){ setStatusMtg(k,st); render(); openMtgModal(k); }
@@ -2730,7 +2759,9 @@ function renderDayCard(dateStr,isToday){
     const lewat=m.selesai<=Date.now();
     return `
       <div class="task mtg ${lewat&&!st?'lewat':''} ${st==='s'?'done':''} ${st==='x'?'absen':''}" style="--mtg:${w}">
-        <div class="checkbox ${st==='s'?'checked':''}" onclick="toggleMtg('${k}')" aria-label="Tandai sudah terlaksana">${st==='s'?'✓':''}</div>
+        ${st==='x'
+          ? `<div class="checkbox mati" title="Ditandai tidak perlu hadir" aria-disabled="true"></div>`
+          : `<div class="checkbox ${st==='s'?'checked':''}" onclick="toggleMtg('${k}')" aria-label="Tandai sudah terlaksana">${st==='s'?'✓':''}</div>`}
         <div class="task-body" onclick="openMtgModal('${k}')">
           <div class="task-name ${m.batal?'batal':''}">${esc(m.judul)}${kalBaru(m)?' <span class="chip chip-baru">Baru</span>':''}</div>
           <div class="task-meta">
