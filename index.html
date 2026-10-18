@@ -197,6 +197,23 @@
   .cic-tahap{margin-top:10px;border-top:1px solid var(--line);padding-top:4px;}
   .goal-text{flex:1;font-size:13.5px;}
 
+  /* ---- meeting dari kalender ---- */
+  .task.mtg .mtg-bar{width:4px;align-self:stretch;min-height:34px;border-radius:4px;background:var(--mtg);flex:0 0 auto;margin:0 7px 0 8px;}
+  .task.mtg.lewat .task-body{opacity:.55;}
+  .task-name.batal,.name.batal{text-decoration:line-through;color:var(--ink-soft);}
+  .chip-baru{background:var(--accent);color:#fff;}
+  .chip-bentrok{background:var(--warn-soft);color:var(--warn);text-transform:none;letter-spacing:0;}
+  .mtg-sehari{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+  .mtg-sehari .chip{text-transform:none;letter-spacing:0;font-size:11px;font-weight:600;padding:3px 9px;}
+  .mtg-sorot{display:flex;align-items:center;gap:10px;border-left:4px solid var(--mtg);background:#FBF9F3;border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+  .mtg-label{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-soft);}
+  .mtg-judul{font-size:14px;font-weight:600;margin:2px 0;word-break:break-word;}
+  .mtg-baris{justify-content:flex-start;}
+  .mtg-baris.lewat{opacity:.5;}
+  .kal-catatan{font-size:11.5px;color:var(--ink-soft);margin:-4px 0 12px;}
+  a.btn{display:inline-block;text-decoration:none;text-align:center;}
+  .btn:disabled{opacity:.5;cursor:default;}
+
   .empty{text-align:center;padding:18px 10px;color:var(--ink-soft);font-size:12.5px;}
 
   /* modal */
@@ -325,7 +342,7 @@
    supaya data yang sudah ada tetap terbaca. */
 const STORAGE_KEY = "peta-rencana-v1";
 const BACKUP_KEY = "peta-rencana-cadangan-otomatis";
-const APP_VERSION = "2.4";
+const APP_VERSION = "3.0";
 const DAY_NAMES = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
 const DAY_SHORT = ["Min","Sen","Sel","Rab","Kam","Jum","Sab"];
 const PRIORITIES = {
@@ -688,7 +705,764 @@ function workCapacity(){
 function usedOfficeMin(wkKey,dateStr){
   return tasksForDay(wkKey,dateStr)
     .filter(t=>t.cat==="c-kantor" || catById(t.cat).name.toLowerCase()==="kantor")
-    .reduce((s,t)=>s+durMin(t.start,t.end),0);
+    .reduce((s,t)=>s+durMin(t.start,t.end),0) + menitMeetingKantor(dateStr);
+}
+
+/* ================= PARSER KALENDER (ICS) =================
+   Dipakai untuk tautan ICS dari Outlook dan Google Calendar.
+   Semua pengolahan di perangkat: penghubung (Cloudflare) hanya meneruskan teks mentahnya. */
+const ICS_HARI = {SU:0,MO:1,TU:2,WE:3,TH:4,FR:5,SA:6};
+const ICS_HARI_MS = 86400000;
+/* Nama zona waktu Windows (dipakai Outlook) → nama IANA */
+const ZONA_WINDOWS = {
+  "SE Asia Standard Time":"Asia/Jakarta", "Singapore Standard Time":"Asia/Singapore",
+  "Malay Peninsula Standard Time":"Asia/Kuala_Lumpur", "W. Australia Standard Time":"Australia/Perth",
+  "China Standard Time":"Asia/Shanghai", "Taipei Standard Time":"Asia/Taipei",
+  "Tokyo Standard Time":"Asia/Tokyo", "Korea Standard Time":"Asia/Seoul",
+  "India Standard Time":"Asia/Kolkata", "Arabian Standard Time":"Asia/Dubai",
+  "Arab Standard Time":"Asia/Riyadh", "AUS Eastern Standard Time":"Australia/Sydney",
+  "GMT Standard Time":"Europe/London", "Greenwich Standard Time":"Atlantic/Reykjavik",
+  "W. Europe Standard Time":"Europe/Berlin", "Romance Standard Time":"Europe/Paris",
+  "Central Europe Standard Time":"Europe/Budapest", "Central European Standard Time":"Europe/Warsaw",
+  "Eastern Standard Time":"America/New_York", "Central Standard Time":"America/Chicago",
+  "Mountain Standard Time":"America/Denver", "Pacific Standard Time":"America/Los_Angeles",
+  "UTC":"UTC", "Coordinated Universal Time":"UTC",
+};
+const _zonaCache = {}, _dtfCache = {};
+
+function icsBaris(teks){
+  const mentah = String(teks||"").replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+  const out = [];
+  for(const b of mentah){
+    if((b.startsWith(" ")||b.startsWith("\t")) && out.length) out[out.length-1] += b.slice(1);
+    else if(b.trim()) out.push(b);
+  }
+  return out;
+}
+function icsProp(baris){
+  let i=0, q=false;
+  for(; i<baris.length; i++){ const c=baris[i]; if(c==='"') q=!q; else if(c===':' && !q) break; }
+  const kepala = baris.slice(0,i), nilai = baris.slice(i+1);
+  const bagian = []; let cur = "", qq = false;
+  for(const c of kepala){
+    if(c==='"'){ qq=!qq; continue; }
+    if(c===';' && !qq){ bagian.push(cur); cur=""; } else cur += c;
+  }
+  bagian.push(cur);
+  const param = {};
+  bagian.slice(1).forEach(p=>{ const k=p.indexOf("="); if(k>0) param[p.slice(0,k).toUpperCase()] = p.slice(k+1); });
+  return {nama:bagian[0].toUpperCase(), param, nilai};
+}
+function icsTeks(v){
+  return String(v||"").replace(/\\\\/g,"\u0000").replace(/\\n/gi,"\n").replace(/\\([,;])/g,"$1").replace(/\u0000/g,"\\");
+}
+function icsOffset(v){
+  const m = /^([+-])(\d{2})(\d{2})/.exec(String(v||"").trim());
+  return m ? (m[1]==="-"?-1:1)*(Number(m[2])*60+Number(m[3])) : null;
+}
+function zonaValid(z){
+  try{ new Intl.DateTimeFormat("en-US",{timeZone:z}); return true; }catch(e){ return false; }
+}
+const _offCache = new Map();
+function offsetZona(z, ms){
+  const kunci = z + "|" + Math.floor(ms/900000);   /* perpindahan musim selalu di batas 15 menit */
+  const ada = _offCache.get(kunci);
+  if(ada!==undefined) return ada;
+  const f = _dtfCache[z] || (_dtfCache[z] = new Intl.DateTimeFormat("en-US",{timeZone:z, hourCycle:"h23",
+    year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit"}));
+  const p = {};
+  f.formatToParts(new Date(ms)).forEach(x=>{ p[x.type]=x.value; });
+  const sbgUtc = Date.UTC(+p.year, +p.month-1, +p.day, (+p.hour)%24, +p.minute, +p.second);
+  const hasil = Math.round((sbgUtc - ms)/60000);
+  if(_offCache.size > 50000) _offCache.clear();
+  _offCache.set(kunci, hasil);
+  return hasil;
+}
+function resolusiZona(tzid, tabel){
+  if(!tzid) return {jenis:"lokal"};
+  const kunci = tzid;
+  if(_zonaCache[kunci] && !tabel[tzid]) return _zonaCache[kunci];
+  const id = tzid.replace(/^"+|"+$/g,"").replace(/^\/+/,"").trim();
+  let z;
+  if(/^(UTC|GMT|Z|Etc\/UTC|Etc\/GMT)$/i.test(id)) z = {jenis:"utc"};
+  else if(id.includes("/") && zonaValid(id)) z = {jenis:"iana", id};
+  else if(ZONA_WINDOWS[id]) z = {jenis:"iana", id:ZONA_WINDOWS[id]};
+  else {
+    const t = tabel[tzid] || tabel[id];
+    if(t && t.std!=null) z = {jenis:"tetap", off:t.std};
+    else {
+      const g = /(?:UTC|GMT)\s*([+-])\s*(\d{1,2})(?::?(\d{2}))?/i.exec(id);
+      z = g ? {jenis:"tetap", off:(g[1]==="-"?-1:1)*(Number(g[2])*60+Number(g[3]||0))} : {jenis:"lokal"};
+    }
+  }
+  _zonaCache[kunci] = z;
+  return z;
+}
+/* wall = jam dinding yang ditulis sebagai Date.UTC(...); hasilnya waktu absolut (ms) */
+function dindingKeUtc(wall, zona){
+  if(!zona || zona.jenis==="lokal"){
+    const d = new Date(wall);
+    return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds()).getTime();
+  }
+  if(zona.jenis==="utc") return wall;
+  if(zona.jenis==="tetap") return wall - zona.off*60000;
+  const t1 = wall - offsetZona(zona.id, wall)*60000;
+  return wall - offsetZona(zona.id, t1)*60000;
+}
+function icsWaktuSatu(v, param, tabel){
+  const m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/.exec(String(v||"").trim());
+  if(!m) return null;
+  const wall = Date.UTC(+m[1], +m[2]-1, +m[3], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+  const seharian = !m[4] || String(param.VALUE||"").toUpperCase()==="DATE";
+  let zona;
+  if(m[7]) zona = {jenis:"utc"};
+  else if(seharian) zona = {jenis:"lokal"};
+  else zona = resolusiZona(param.TZID, tabel);
+  return {wall, seharian, zona, utc:dindingKeUtc(wall, zona)};
+}
+function icsWaktu(prop, tabel){
+  if(!prop) return null;
+  return icsWaktuSatu(String(prop.nilai).split(",")[0], prop.param, tabel);
+}
+function icsDurasi(v){
+  const m = /^([+-])?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(String(v||"").trim());
+  if(!m) return null;
+  const ms = (((+(m[2]||0))*7 + (+(m[3]||0)))*86400 + (+(m[4]||0))*3600 + (+(m[5]||0))*60 + (+(m[6]||0)))*1000;
+  return m[1]==="-" ? -ms : ms;
+}
+function icsUrai(teks){
+  const tabel = {}, acara = [];
+  let ev = null, tz = null, sub = null;
+  const tumpuk = [];
+  for(const b of icsBaris(teks)){
+    const p = icsProp(b);
+    if(p.nama==="BEGIN"){
+      const v = p.nilai.trim().toUpperCase(); tumpuk.push(v);
+      if(v==="VEVENT") ev = {exdate:[]};
+      else if(v==="VTIMEZONE") tz = {id:"", std:null, dst:null};
+      else if(tz && (v==="STANDARD"||v==="DAYLIGHT")) sub = {jenis:v, off:null};
+      continue;
+    }
+    if(p.nama==="END"){
+      const v = p.nilai.trim().toUpperCase(); tumpuk.pop();
+      if(v==="VEVENT" && ev){ acara.push(ev); ev = null; }
+      else if(v==="VTIMEZONE" && tz){ if(tz.id) tabel[tz.id] = tz; tz = null; }
+      else if((v==="STANDARD"||v==="DAYLIGHT") && tz && sub){
+        if(v==="STANDARD" && tz.std==null) tz.std = sub.off;
+        if(v==="DAYLIGHT" && tz.dst==null) tz.dst = sub.off;
+        sub = null;
+      }
+      continue;
+    }
+    const atas = tumpuk[tumpuk.length-1];
+    if(ev && atas==="VEVENT"){
+      switch(p.nama){
+        case "UID": ev.uid = p.nilai.trim(); break;
+        case "SUMMARY": ev.judul = icsTeks(p.nilai); break;
+        case "LOCATION": ev.lokasi = icsTeks(p.nilai); break;
+        case "DESCRIPTION": ev.deskripsi = icsTeks(p.nilai); break;
+        case "DTSTART": ev.dtstart = p; break;
+        case "DTEND": ev.dtend = p; break;
+        case "DURATION": ev.durasi = p.nilai; break;
+        case "RRULE": ev.rrule = p.nilai; break;
+        case "EXDATE": ev.exdate.push(p); break;
+        case "RECURRENCE-ID": ev.recid = p; break;
+        case "STATUS": ev.status = p.nilai.trim().toUpperCase(); break;
+        case "TRANSP": ev.transp = p.nilai.trim().toUpperCase(); break;
+        case "X-MICROSOFT-CDO-BUSYSTATUS": ev.busy = p.nilai.trim().toUpperCase(); break;
+        case "URL": ev.url = p.nilai.trim(); break;
+        case "X-GOOGLE-CONFERENCE": ev.konferensi = p.nilai.trim(); break;
+        case "X-MICROSOFT-SKYPETEAMSMEETINGURL": ev.konferensi = ev.konferensi || p.nilai.trim(); break;
+      }
+    } else if(sub){
+      if(p.nama==="TZOFFSETTO") sub.off = icsOffset(p.nilai);
+    } else if(tz && p.nama==="TZID"){
+      tz.id = p.nilai.trim();
+    }
+  }
+  return {tabel, acara};
+}
+const POLA_LINK = /https?:\/\/(?:[\w-]+\.)*(?:teams\.microsoft\.com|teams\.live\.com|meet\.google\.com|zoom\.us|webex\.com)\/[^\s<>"'\])]+/i;
+function cariLink(ev){
+  for(const s of [ev.konferensi, ev.url, ev.lokasi, ev.deskripsi]){
+    const m = s && POLA_LINK.exec(s);
+    if(m) return m[0].replace(/[.,;]+$/,"");
+  }
+  return "";
+}
+
+/* ---------- pengulangan (RRULE) ----------
+   Dihitung di "jam dinding" zona acara, baru diubah ke waktu absolut per kejadian —
+   jadi meeting jam 09.00 tetap jam 09.00 walau zona acaranya punya musim panas. */
+function rruleUrai(s){
+  const o = {};
+  String(s||"").split(";").forEach(kv=>{ const i=kv.indexOf("="); if(i>0) o[kv.slice(0,i).toUpperCase()] = kv.slice(i+1); });
+  return o;
+}
+function daftarAngka(s){ return s ? s.split(",").map(Number).filter(n=>!isNaN(n)&&n!==0) : []; }
+function daftarHari(s){
+  if(!s) return [];
+  return s.split(",").map(x=>{
+    const m = /^([+-]?\d{1,2})?(SU|MO|TU|WE|TH|FR|SA)$/i.exec(x.trim());
+    return m ? {n:m[1]?Number(m[1]):0, wd:ICS_HARI[m[2].toUpperCase()]} : null;
+  }).filter(Boolean);
+}
+function hariDalamBulan(y,m){ return new Date(Date.UTC(y,m+1,0)).getUTCDate(); }
+function kandidatBulan(y, m, rr, hariAwal){
+  const jml = hariDalamBulan(y,m);
+  let out = [];
+  if(rr.byMonthDay.length){
+    rr.byMonthDay.forEach(d=>{ const t = d>0 ? d : jml+d+1; if(t>=1 && t<=jml) out.push(Date.UTC(y,m,t)); });
+    if(rr.byDay.length){ const set=new Set(rr.byDay.map(b=>b.wd)); out = out.filter(t=>set.has(new Date(t).getUTCDay())); }
+  } else if(rr.byDay.length){
+    rr.byDay.forEach(b=>{
+      const semua = [];
+      for(let t=1; t<=jml; t++){ const ms=Date.UTC(y,m,t); if(new Date(ms).getUTCDay()===b.wd) semua.push(ms); }
+      if(b.n>0){ if(semua[b.n-1]!=null) out.push(semua[b.n-1]); }
+      else if(b.n<0){ if(semua[semua.length+b.n]!=null) out.push(semua[semua.length+b.n]); }
+      else out.push(...semua);
+    });
+  } else if(hariAwal<=jml){
+    out.push(Date.UTC(y,m,hariAwal));
+  }
+  return out;
+}
+function terapkanSetPos(list, setpos){
+  if(!setpos.length) return list;
+  const out = [];
+  setpos.forEach(p=>{ const v = p>0 ? list[p-1] : list[list.length+p]; if(v!=null) out.push(v); });
+  return [...new Set(out)].sort((a,b)=>a-b);
+}
+/* Menghasilkan jam dinding tiap kejadian, berhenti setelah batasDinding / COUNT / UNTIL */
+function ekspansiRrule(wall0, aturan, batasDinding, lewatUntil){
+  const rr = {
+    freq:(aturan.FREQ||"").toUpperCase(),
+    iv:Math.max(1, parseInt(aturan.INTERVAL||"1",10)||1),
+    count: aturan.COUNT ? parseInt(aturan.COUNT,10) : Infinity,
+    byDay: daftarHari(aturan.BYDAY), byMonthDay: daftarAngka(aturan.BYMONTHDAY),
+    byMonth: daftarAngka(aturan.BYMONTH), setPos: daftarAngka(aturan.BYSETPOS),
+  };
+  const jam = ((wall0 % ICS_HARI_MS) + ICS_HARI_MS) % ICS_HARI_MS;
+  const hari0 = wall0 - jam;
+  const d0 = new Date(hari0);
+  const y0 = d0.getUTCFullYear(), m0 = d0.getUTCMonth(), tgl0 = d0.getUTCDate(), wd0 = d0.getUTCDay();
+  const out = [wall0];
+  let n = 1;
+  if(lewatUntil(wall0) || rr.count<=1) return out;
+  const cocokBulan = ms => !rr.byMonth.length || rr.byMonth.includes(new Date(ms).getUTCMonth()+1);
+  const setHari = new Set(rr.byDay.map(b=>b.wd));
+  for(let k=0; k<20000; k++){
+    let kand = [];
+    if(rr.freq==="DAILY"){
+      const t = hari0 + k*rr.iv*ICS_HARI_MS;
+      if(cocokBulan(t) && (!setHari.size || setHari.has(new Date(t).getUTCDay()))
+         && (!rr.byMonthDay.length || rr.byMonthDay.includes(new Date(t).getUTCDate()))) kand = [t];
+    } else if(rr.freq==="WEEKLY"){
+      const awalMinggu = hari0 - ((wd0+6)%7)*ICS_HARI_MS + k*rr.iv*7*ICS_HARI_MS;
+      const hariList = setHari.size ? [...setHari] : [wd0];
+      kand = hariList.map(wd=>awalMinggu + ((wd+6)%7)*ICS_HARI_MS).sort((a,b)=>a-b).filter(cocokBulan);
+    } else if(rr.freq==="MONTHLY"){
+      const tot = m0 + k*rr.iv, y = y0 + Math.floor(tot/12), m = ((tot%12)+12)%12;
+      if(cocokBulan(Date.UTC(y,m,1))) kand = kandidatBulan(y, m, rr, tgl0).sort((a,b)=>a-b);
+    } else if(rr.freq==="YEARLY"){
+      const y = y0 + k*rr.iv;
+      const bulan = rr.byMonth.length ? rr.byMonth.map(b=>b-1) : [m0];
+      bulan.forEach(m=>{ kand.push(...kandidatBulan(y, m, rr, tgl0)); });
+      kand.sort((a,b)=>a-b);
+    } else {
+      return out;   /* HOURLY/MINUTELY/SECONDLY tidak dipakai untuk meeting */
+    }
+    kand = terapkanSetPos(kand, rr.setPos);
+    let lewatBatas = false;
+    for(const t of kand){
+      const w = t + jam;
+      if(w <= wall0) continue;
+      if(w > batasDinding || lewatUntil(w)){ lewatBatas = true; break; }
+      out.push(w); n++;
+      if(n >= rr.count) return out;
+    }
+    if(lewatBatas) return out;
+    if(!kand.length){
+      const periode = rr.freq==="DAILY"?rr.iv : rr.freq==="WEEKLY"?rr.iv*7 : rr.freq==="MONTHLY"?rr.iv*28 : rr.iv*365;
+      if(hari0 + k*periode*ICS_HARI_MS > batasDinding) return out;
+    }
+  }
+  return out;
+}
+
+/* ---------- hasil akhir ----------
+   Mengembalikan daftar acara yang bersinggungan dengan rentang [dariMs, sampaiMs). */
+function icsAcara(teks, dariMs, sampaiMs){
+  const {tabel, acara} = icsUrai(teks);
+  const hasil = [];
+  const ganti = {};        /* uid → set waktu (ms) kejadian yang punya versi ubahan */
+  acara.forEach(ev=>{
+    if(!ev.recid || !ev.uid) return;
+    const r = icsWaktu(ev.recid, tabel); if(!r) return;
+    (ganti[ev.uid] = ganti[ev.uid] || new Set()).add(r.utc);
+  });
+  const dorong = (ev, mulai, selesai, seharian, kunci)=>{
+    if(selesai <= dariMs || mulai >= sampaiMs) return;
+    const judul = (ev.judul||"").trim() || "(tanpa judul)";
+    hasil.push({
+      id: (ev.uid||judul) + "@" + kunci,
+      uid: ev.uid||"",
+      judul,
+      mulai, selesai, seharian,
+      lokasi: (ev.lokasi||"").trim().slice(0,160),
+      link: cariLink(ev),
+      batal: /^\s*(cancell?ed|dibatalkan)\s*:/i.test(judul),
+      bebas: ev.transp==="TRANSPARENT" || ev.busy==="FREE",
+    });
+  };
+  acara.forEach(ev=>{
+    if(ev.status==="CANCELLED") return;
+    const s = icsWaktu(ev.dtstart, tabel);
+    if(!s) return;
+    let durasi;
+    const e = icsWaktu(ev.dtend, tabel);
+    if(e) durasi = s.seharian ? (e.wall - s.wall) : (e.utc - s.utc);
+    else if(ev.durasi) durasi = icsDurasi(ev.durasi);
+    if(durasi==null || durasi<0) durasi = s.seharian ? ICS_HARI_MS : 0;
+
+    if(!ev.rrule || ev.recid){
+      const mulai = s.utc;
+      const selesai = s.seharian ? dindingKeUtc(s.wall + durasi, s.zona) : mulai + durasi;
+      dorong(ev, mulai, Math.max(selesai, mulai+1), s.seharian, s.seharian ? "d"+s.wall : String(mulai));
+      return;
+    }
+    const aturan = rruleUrai(ev.rrule);
+    let lewatUntil = ()=>false;
+    if(aturan.UNTIL){
+      const u = icsWaktuSatu(aturan.UNTIL, {}, tabel);
+      if(u){
+        if(/Z$/i.test(aturan.UNTIL)) lewatUntil = w => dindingKeUtc(w, s.zona) > u.utc;
+        else if(u.seharian) lewatUntil = w => w >= u.wall + ICS_HARI_MS;
+        else lewatUntil = w => w > u.wall;
+      }
+    }
+    const exUtc = new Set(), exTgl = new Set();
+    ev.exdate.forEach(p=>{
+      String(p.nilai).split(",").forEach(v=>{
+        const x = icsWaktuSatu(v, p.param, tabel); if(!x) return;
+        if(x.seharian) exTgl.add(x.wall); else exUtc.add(x.utc);
+      });
+    });
+    const diubah = ganti[ev.uid] || new Set();
+    const batasDinding = sampaiMs + 2*ICS_HARI_MS + 14*3600000;
+    const jam = ((s.wall % ICS_HARI_MS) + ICS_HARI_MS) % ICS_HARI_MS;
+    const awalDinding = dariMs - durasi - 2*ICS_HARI_MS;   /* jam dinding & absolut beda maks ±14 jam */
+    ekspansiRrule(s.wall, aturan, batasDinding, lewatUntil).forEach(w=>{
+      if(w < awalDinding) return;
+      const mulai = dindingKeUtc(w, s.zona);
+      if(exUtc.has(mulai) || exTgl.has(w - jam) || diubah.has(mulai)) return;
+      const selesai = s.seharian ? dindingKeUtc(w + durasi, s.zona) : mulai + durasi;
+      dorong(ev, mulai, Math.max(selesai, mulai+1), s.seharian, s.seharian ? "d"+w : String(mulai));
+    });
+  });
+  hasil.sort((a,b)=>a.mulai-b.mulai || a.selesai-b.selesai);
+  /* ICS kadang memuat acara yang sama dua kali (misalnya versi ubahan + aslinya) */
+  const lihat = new Set();
+  return hasil.filter(a=>{ if(lihat.has(a.id)) return false; lihat.add(a.id); return true; });
+}
+
+/* ================= KALENDER TERSAMBUNG (Outlook / Google) =================
+   Tautan ICS disimpan di users/{uid}/rahasia/kalender (koleksi terpisah, tidak lewat
+   mekanisme sinkron/cermin). Isi kalender diambil lewat penghubung Cloudflare,
+   diolah di perangkat, dan disimpan di kunci localStorage tersendiri — bukan di
+   peta-rencana-v1 — jadi versi lama app tidak pernah menyentuhnya. */
+const KAL_KEY = "my-journey-kalender";
+const KAL_LIHAT_KEY = "my-journey-kalender-lihat";
+const KAL_PROXY_BAWAAN = "https://my-journey-kalender.agungurah-krisnanda.workers.dev";   /* penghubung bawaan; kolom di Pengaturan hanya perlu diisi kalau mau memakai alamat lain */
+const KAL_HOST = ["outlook.office365.com","outlook.office.com","outlook.live.com","calendar.google.com"];
+const KAL_JEDA = 2*60000, KAL_INTERVAL = 10*60000;
+
+function kalKosong(){ return {proxy:"", sumber:[], hasil:{}, events:[], dari:0, sampai:0}; }
+function bacaKal(){
+  try{ const k=JSON.parse(localStorage.getItem(KAL_KEY)); if(k && Array.isArray(k.events)) return {...kalKosong(), ...k}; }catch(e){}
+  return kalKosong();
+}
+function bacaKalLihat(){ try{ return JSON.parse(localStorage.getItem(KAL_LIHAT_KEY))||{}; }catch(e){ return {}; } }
+let kal = bacaKal();
+let kalLihat = bacaKalLihat();        /* id acara → kapan pertama kali terlihat (0 = sudah ada sejak awal) */
+let kalRahasia = null;                /* isi dokumen rahasia/kalender, termasuk tautan — hanya di memori */
+let kalSedang = false, kalTerakhir = 0, kalGalatAkses = "", kalKunciTerakhir = "";
+
+function simpanKal(){ try{ localStorage.setItem(KAL_KEY, JSON.stringify(kal)); }catch(e){} }
+function simpanKalLihat(){ try{ localStorage.setItem(KAL_LIHAT_KEY, JSON.stringify(kalLihat)); }catch(e){} }
+function warnaAman(w,d){ return /^#[0-9a-f]{6}$/i.test(w||"") ? w : (d||"#2F5D50"); }
+function kalProxy(){ return String((kalRahasia&&kalRahasia.proxy) || kal.proxy || KAL_PROXY_BAWAAN || "").trim().replace(/\/+$/,""); }
+function kalSumberById(id){ return (kal.sumber||[]).find(s=>s.id===id) || null; }
+function kalSumberAktif(){ return (kal.sumber||[]).filter(s=>s.aktif!==false); }
+function kalSumberKantor(s){ return !!s && (s.cat==="c-kantor" || catById(s.cat).name.toLowerCase()==="kantor"); }
+function kalAcaraHari(dateStr){
+  const a=parseDate(dateStr).getTime(), b=parseDate(addDays(dateStr,1)).getTime();
+  const aktif=new Set(kalSumberAktif().map(s=>s.id));
+  return (kal.events||[]).filter(e=>aktif.has(e.sumber) && e.mulai<b && e.selesai>a);
+}
+function kalBaru(e){ const t=kalLihat[e.id]; return !!t && Date.now()-t < 24*3600000 && e.selesai>Date.now(); }
+function jamMenit(ms){ const d=new Date(ms); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+function teksSampai(ms){
+  const m=Math.round((ms-Date.now())/60000);
+  if(m<=0) return "sekarang";
+  if(m<60) return `${m} menit lagi`;
+  const tgl=dateKey(new Date(ms));
+  if(m<12*60){ const h=Math.floor(m/60), r=m%60; return `${h} jam${r?` ${r} menit`:''} lagi`; }
+  if(tgl===dateKey(new Date())) return `hari ini ${jamMenit(ms)}`;
+  if(tgl===dateKey(new Date(Date.now()+86400000))) return `besok ${jamMenit(ms)}`;
+  return `${DAY_NAMES[new Date(ms).getDay()]}, ${fmtDayShort(tgl)} ${jamMenit(ms)}`;
+}
+function teksWaktuUpdate(ms){
+  if(!ms) return "";
+  return dateKey(new Date(ms))===dateKey(new Date()) ? jamMenit(ms) : `${fmtDayShort(dateKey(new Date(ms)))} ${jamMenit(ms)}`;
+}
+/* Menit meeting kantor yang jatuh di jam kerja (di luar istirahat). Meeting yang
+   saling tumpang tindih dihitung sekali. */
+function menitMeetingKantor(dateStr){
+  const w=data.plan.work, a=parseDate(dateStr).getTime();
+  const ws=toMin(w.start), we=toMin(w.end), bs=toMin(w.breakStart), be=toMin(w.breakEnd);
+  if(ws==null || we==null || we<=ws) return 0;
+  const iv=kalAcaraHari(dateStr)
+    .filter(e=>!e.seharian && !e.batal && !e.bebas && kalSumberKantor(kalSumberById(e.sumber)))
+    .map(e=>[Math.max(ws,(e.mulai-a)/60000), Math.min(we,(e.selesai-a)/60000)])
+    .filter(x=>x[1]>x[0]).sort((x,y)=>x[0]-y[0]);
+  let tot=0, cs=null, ce=null;
+  const tambah=(s,e)=>{
+    let d=e-s;
+    if(bs!=null && be!=null && be>bs) d-=Math.max(0, Math.min(e,be)-Math.max(s,bs));
+    tot+=Math.max(0,d);
+  };
+  iv.forEach(([s,e])=>{
+    if(cs==null){ cs=s; ce=e; }
+    else if(s<=ce) ce=Math.max(ce,e);
+    else { tambah(cs,ce); cs=s; ce=e; }
+  });
+  if(cs!=null) tambah(cs,ce);
+  return Math.round(tot);
+}
+
+/* ---------- ambil isi kalender ---------- */
+function kalRentang(){
+  return {
+    dari: parseDate(addDays(mondayKey(new Date()),-14)).getTime(),
+    sampai: parseDate(addDays(dateKey(new Date()),92)).getTime(),
+  };
+}
+function kalPesan(e){
+  const m=String((e&&e.message)||e||"");
+  if(/Failed to fetch|NetworkError|Load failed|fetch failed/i.test(m))
+    return navigator.onLine===false ? "Sedang offline." : "Penghubung tidak terjangkau — cek alamatnya di Jadwal → Pengaturan.";
+  return m.slice(0,180) || "Gagal mengambil kalender.";
+}
+/* Label "Baru": hanya untuk acara yang muncul di bagian kalender yang sebelumnya
+   SUDAH terambil — supaya kejadian rutin yang baru masuk jangkauan tidak ikut ditandai. */
+function tandaiBaru(sid, evs){
+  const sebelum=kal.hasil[sid];
+  const pertama=!(sebelum && sebelum.pernah);
+  const batasLama=(sebelum && sebelum.sampai) || 0;
+  const now=Date.now(), hasil={};
+  Object.entries(kalLihat).forEach(([id,t])=>{ if(!id.startsWith(sid+":")) hasil[id]=t; });
+  evs.forEach(e=>{
+    if(kalLihat[e.id]!==undefined) hasil[e.id]=kalLihat[e.id];
+    else hasil[e.id] = (!pertama && e.mulai<batasLama && e.selesai>now) ? now : 0;
+  });
+  kalLihat=hasil;
+}
+async function kalSegarkan(paksa){
+  if(!syncAktif() || !kalRahasia || kalSedang) return;
+  if(!paksa && Date.now()-kalTerakhir < KAL_JEDA) return;
+  const ids=new Set((kalRahasia.sumber||[]).map(s=>s.id));
+  kal.events=(kal.events||[]).filter(e=>ids.has(e.sumber));
+  Object.keys(kal.hasil||{}).forEach(id=>{ if(!ids.has(id)) delete kal.hasil[id]; });
+  Object.keys(kalLihat).forEach(id=>{ if(!ids.has(id.split(":")[0])) delete kalLihat[id]; });
+  const proxy=kalProxy();
+  const daftar=(kalRahasia.sumber||[]).filter(s=>s.aktif!==false);
+  if(!proxy || !daftar.length || navigator.onLine===false){ simpanKal(); simpanKalLihat(); return; }
+  kalSedang=true; kalTerakhir=Date.now(); renderNanti();
+  const {dari,sampai}=kalRentang();
+  let token="";
+  try{ token=await fb.auth.currentUser.getIdToken(); }
+  catch(e){ daftar.forEach(s=>{ kal.hasil[s.id]={...(kal.hasil[s.id]||{}), ok:false, galat:"Sesi login berakhir, buka ulang app."}; }); }
+  if(token) await Promise.all(daftar.map(async s=>{
+    try{
+      const r=await fetch(`${proxy}/ics?src=${encodeURIComponent(s.id)}`, {headers:{Authorization:"Bearer "+token}, cache:"no-store"});
+      if(!r.ok){ let g=""; try{ g=(await r.json()).galat||""; }catch(x){} throw new Error(g || `Penghubung menjawab ${r.status}.`); }
+      const teks=await r.text();
+      if(!/BEGIN:VCALENDAR/i.test(teks.slice(0,4000))) throw new Error("Isi tautan bukan kalender. Pastikan memakai tautan ICS, bukan HTML.");
+      const evs=icsAcara(teks,dari,sampai).map(e=>({...e, id:s.id+":"+e.id, sumber:s.id}));
+      tandaiBaru(s.id, evs);
+      kal.events=kal.events.filter(e=>e.sumber!==s.id).concat(evs);
+      kal.hasil[s.id]={ok:true, pernah:true, waktu:Date.now(), n:evs.length, sampai};
+    }catch(e){
+      kal.hasil[s.id]={...(kal.hasil[s.id]||{}), ok:false, galat:kalPesan(e), waktuGagal:Date.now()};
+    }
+  }));
+  kal.events.sort((a,b)=>a.mulai-b.mulai || a.selesai-b.selesai);
+  kal.dari=dari; kal.sampai=sampai;
+  simpanKal(); simpanKalLihat();
+  kalSedang=false; renderNanti();
+}
+function kalPerbaruiManual(){
+  if(!syncAktif()){ alert("Belum tersambung ke akun. Masuk dulu di menu Data."); return; }
+  if(!kalProxy()){ alert("Alamat penghubung belum diisi (Jadwal → Pengaturan → Kalender Tersambung)."); return; }
+  kalSegarkan(true);
+}
+
+/* ---------- pengaturan di Firestore ---------- */
+function refKalender(){ return fb.F.doc(fb.db,"users",fb.uid,"rahasia","kalender"); }
+function pasangPendengarKalender(){
+  const stop=fb.F.onSnapshot(refKalender(), {includeMetadataChanges:true}, snap=>{
+    const d=snap.exists() ? snap.data() : {};
+    kalRahasia={proxy:String(d.proxy||""), sumber:Array.isArray(d.sumber)?d.sumber:[]};
+    kalGalatAkses="";
+    kal.proxy=kalRahasia.proxy;
+    kal.sumber=kalRahasia.sumber.map(s=>({id:s.id, nama:s.nama||"Kalender", warna:warnaAman(s.warna), cat:s.cat||"", aktif:s.aktif!==false, jenis:s.jenis||""}));
+    simpanKal();
+    /* Ambil ulang hanya setelah perubahan benar-benar sampai di server —
+       penghubung membaca tautan dari server, bukan dari perangkat ini. */
+    const kunci=kanonik({p:kalProxy(), s:kalRahasia.sumber.map(s=>[s.id,s.url,s.aktif!==false])});
+    if(!snap.metadata.hasPendingWrites && kunci!==kalKunciTerakhir){ kalKunciTerakhir=kunci; kalSegarkan(true); }
+    renderNanti();
+  }, err=>{ kalGalatAkses=pesanGalat(err); renderNanti(); });
+  unsubs.push(stop);
+}
+function tulisKalender(isi){
+  if(!syncAktif()){ alert("Belum tersambung ke akun. Masuk dulu di menu Data."); return false; }
+  tandaiAntre(fb.F.setDoc(refKalender(), isi));
+  return true;
+}
+function normalTautan(v){
+  v=String(v||"").trim().replace(/^webcals?:\/\//i,"https://");
+  let u;
+  try{ u=new URL(v); }catch(e){ return {galat:"Tautan tidak valid. Salin ulang dari Outlook atau Google Calendar."}; }
+  if(u.protocol!=="https:" || !KAL_HOST.includes(u.hostname))
+    return {galat:"Hanya tautan dari Outlook (outlook.office365.com) atau Google Calendar (calendar.google.com)."};
+  if(/\.html?$/i.test(u.pathname)) return {galat:"Ini tautan HTML. Pakai tautan yang berakhiran .ics."};
+  return {url:u.toString(), jenis:u.hostname.includes("google") ? "google" : "outlook"};
+}
+
+/* ---------- tampilan pengaturan ---------- */
+function petunjukKalender(){
+  return `
+    <details class="petunjuk section-gap">
+      <summary>Cara mendapatkan tautan ICS</summary>
+      <p><strong>Outlook kantor</strong> — di laptop, buka outlook.office.com:</p>
+      <ol>
+        <li>⚙ Settings → <strong>Calendar</strong> → <strong>Shared calendars</strong>.</li>
+        <li>Di bagian <strong>Publish a calendar</strong>, pilih <em>Calendar</em> dan izin <em>Can view all details</em> (supaya tombol Gabung Teams muncul), lalu <strong>Publish</strong>.</li>
+        <li>Salin tautan <strong>ICS</strong>, bukan HTML.</li>
+      </ol>
+      <p><strong>Google Calendar</strong> — di laptop, buka calendar.google.com:</p>
+      <ol>
+        <li>Arahkan kursor ke nama kalender di <em>My calendars</em> → ⋮ → <strong>Settings and sharing</strong>.</li>
+        <li>Bagian <strong>Integrate calendar</strong> → <strong>Secret address in iCal format</strong> → salin.</li>
+      </ol>
+      <p>Kalau tautan bocor: di Outlook klik Unpublish lalu Publish lagi; di Google klik Reset. Tautan lama langsung mati — tempel tautan barunya lewat ✎.</p>
+    </details>
+    <details class="petunjuk">
+      <summary>Cara memasang penghubung (sekali saja)</summary>
+      <ol>
+        <li>Daftar gratis di <strong>dash.cloudflare.com</strong> — tidak perlu kartu kredit.</li>
+        <li>Buka <strong>Workers &amp; Pages</strong> → <strong>Create</strong> → pilih contoh <em>Hello World</em> → beri nama <code>my-journey-kalender</code> → <strong>Deploy</strong>.</li>
+        <li>Klik <strong>Edit code</strong>, hapus semua isinya, tempel isi berkas <code>worker.js</code>, lalu <strong>Deploy</strong>.</li>
+        <li>Salin alamat <code>….workers.dev</code>, tempel di kolom Penghubung di atas → Simpan → Tes sambungan.</li>
+      </ol>
+      <p>Penghubung tidak menyimpan apa pun dan tidak butuh kunci rahasia. Hanya akun yang terdaftar di app ini yang bisa memakainya.</p>
+    </details>`;
+}
+function renderKalenderCard(){
+  const intro=`<div class="small muted" style="margin-bottom:10px">Meeting dari Outlook dan Google Calendar muncul sendiri di Jadwal dan Ringkasan, tidak perlu diketik ulang. Dari sini hanya bisa dilihat — mengubah atau menolak meeting tetap lewat Outlook/Google.</div>`;
+  if(!sesi()) return `
+    <div class="card"><h3>Kalender Tersambung</h3>${intro}
+      <div class="small muted">Masuk akun dulu di menu <strong>Data</strong>. Tautan kalender disimpan di akun, jadi cukup diatur sekali untuk semua perangkat.</div>
+      <button class="btn btn-ghost btn-full section-gap" onclick="setTab('data')">Buka menu Data →</button>
+    </div>`;
+  if(!kalRahasia) return `
+    <div class="card"><h3>Kalender Tersambung</h3>${intro}
+      <div class="small ${kalGalatAkses?'':'muted'}" style="${kalGalatAkses?'color:var(--warn)':''}">${kalGalatAkses?esc(kalGalatAkses):'Memuat pengaturan kalender…'}</div>
+    </div>`;
+  const proxy=kalProxy();
+  const rows=kal.sumber.map(s=>{
+    const h=(kal.hasil||{})[s.id];
+    const w=warnaAman(s.warna);
+    let st="Belum diambil";
+    if(!proxy) st="Menunggu alamat penghubung";
+    else if(kalSedang && s.aktif) st="Memperbarui…";
+    else if(h && h.ok) st=`Diperbarui ${teksWaktuUpdate(h.waktu)} · ${h.n} acara`;
+    else if(h && h.waktu) st=`Terakhir berhasil ${teksWaktuUpdate(h.waktu)}`;
+    return `
+      <div class="task ${s.aktif?'':'nonaktif'}">
+        <span class="cat-dot" style="background:${w};margin-top:6px"></span>
+        <div class="task-body">
+          <div class="task-name">${esc(s.nama)} ${s.aktif?'':'<span class="rule-status selesai">Mati</span>'}</div>
+          <div class="task-meta">
+            <span class="chip" style="background:${w}1A;color:${w}">${s.jenis==="google"?"Google":s.jenis==="outlook"?"Outlook":"ICS"}</span>
+            <span class="chip" style="background:var(--sage);color:var(--ink-soft)">${esc(catById(s.cat).name)}</span>
+            <span class="time-text">${st}</span>
+          </div>
+          ${h && h.ok===false && s.aktif ? `<div class="small" style="color:var(--warn);margin-top:4px">${esc(h.galat||'')}</div>` : ''}
+        </div>
+        <div class="task-actions">
+          <button class="btn btn-line btn-sm" onclick="toggleKal('${s.id}')">${s.aktif?'Matikan':'Nyalakan'}</button>
+          <button class="icon-btn" onclick="openKalModal('${s.id}')" aria-label="Ubah">✎</button>
+          <button class="icon-btn" onclick="hapusKal('${s.id}')" aria-label="Hapus">✕</button>
+        </div>
+      </div>`;
+  }).join('') || `<div class="empty">Belum ada kalender tersambung.</div>`;
+  return `
+    <div class="card">
+      <h3>Kalender Tersambung</h3>${intro}
+      ${rows}
+      <button class="btn btn-accent btn-full section-gap" onclick="openKalModal(null)">+ Sambungkan kalender</button>
+      ${kal.sumber.length?`<button class="btn btn-line btn-sm btn-full section-gap" onclick="kalPerbaruiManual()" ${kalSedang?'disabled':''}>${kalSedang?'Memperbarui…':'↻ Perbarui sekarang'}</button>`:''}
+      <div class="periode-box section-gap" style="margin-bottom:0">
+        <div class="judul">Penghubung (Cloudflare Worker)</div>
+        <div class="small muted" style="margin-bottom:8px">Alamat yang didapat setelah memasang penghubung, misalnya <code>https://my-journey-kalender.namaanda.workers.dev</code></div>
+        <input type="text" id="kal-proxy" value="${esc(kalRahasia.proxy||'')}" placeholder="${esc(KAL_PROXY_BAWAAN||'https://….workers.dev')}" autocomplete="off" autocapitalize="off" spellcheck="false" />
+        <div class="week-actions section-gap" style="margin-bottom:0">
+          <button class="btn btn-accent btn-sm" onclick="simpanProxy()">Simpan</button>
+          <button class="btn btn-line btn-sm" onclick="tesProxy()">Tes sambungan</button>
+        </div>
+      </div>
+      ${petunjukKalender()}
+    </div>`;
+}
+function simpanProxy(){
+  let v=(document.getElementById("kal-proxy").value||"").trim().replace(/\/+$/,"");
+  if(v){
+    let u; try{ u=new URL(v); }catch(e){ alert("Alamat penghubung tidak valid."); return; }
+    if(u.protocol!=="https:"){ alert("Alamat penghubung harus diawali https://"); return; }
+    if(KAL_HOST.includes(u.hostname)){ alert("Ini tautan kalender, bukan alamat penghubung. Tautan kalender ditambahkan lewat “Sambungkan kalender”."); return; }
+    v=u.origin;
+  }
+  if(tulisKalender({proxy:v, sumber:(kalRahasia&&kalRahasia.sumber)||[]})) alert(v?"Alamat penghubung disimpan.":"Alamat penghubung dikosongkan.");
+}
+async function tesProxy(){
+  const el=document.getElementById("kal-proxy");
+  const v=((el&&el.value)||kalProxy()||"").trim().replace(/\/+$/,"");
+  if(!v){ alert("Isi alamat penghubung dulu."); return; }
+  try{
+    const r=await fetch(v+"/", {cache:"no-store"});
+    const t=await r.text();
+    if(r.ok && t.includes("My Journey kalender")) alert("Penghubung aktif ✓\n\nJangan lupa tekan Simpan kalau alamatnya baru.");
+    else alert("Alamat itu menjawab, tapi bukan penghubung My Journey. Cek lagi alamat dan isi kodenya.");
+  }catch(e){ alert("Penghubung tidak terjangkau. Pastikan alamatnya benar dan sudah di-Deploy di Cloudflare."); }
+}
+function openKalModal(id){
+  if(!kalRahasia){ alert("Pengaturan kalender belum termuat. Pastikan sudah masuk akun dan online."); return; }
+  const daftar=kalRahasia.sumber||[];
+  const s=id ? daftar.find(x=>x.id===id) : null;
+  modalState={type:'kal', id};
+  const warnaDef=["#0F6CBD","#1A73E8","#8C5A9E","#B8892B"][daftar.length%4];
+  const catDef=daftar.length===0 ? "c-kantor" : (data.plan.categories.find(c=>c.id==="c-personal") ? "c-personal" : data.plan.categories[0].id);
+  openModal(`
+    <h3>${s?'Ubah Kalender':'Sambungkan Kalender'}</h3>
+    <div class="field"><span class="field-label">Nama</span>
+      <input type="text" id="kal-nama" value="${s?esc(s.nama||''):''}" placeholder="Contoh: Outlook Kantor" /></div>
+    <div class="field"><span class="field-label">Tautan ICS</span>
+      <input type="text" id="kal-url" value="" placeholder="${s?'Tersimpan. Kosongkan kalau tidak diganti.':'https://….ics'}" autocomplete="off" autocapitalize="off" spellcheck="false" /></div>
+    <div class="dur-hint">Tautan ini setara password — siapa pun yang memegangnya bisa membaca kalender. Disimpan di akun Anda dan tidak ditampilkan lagi.</div>
+    <div class="field-row">
+      <div class="field"><span class="field-label">Dihitung sebagai</span><select id="kal-cat">${catOptions(s?s.cat:catDef)}</select></div>
+      <div class="field" style="max-width:96px"><span class="field-label">Warna</span>
+        <input type="color" id="kal-warna" value="${s?warnaAman(s.warna,warnaDef):warnaDef}" style="height:38px;padding:3px" /></div>
+    </div>
+    <div class="small muted">Meeting dari kalender yang dihitung sebagai <strong>Kantor</strong> ikut mengisi bar jam kantor.</div>
+    <div class="modal-actions section-gap">
+      <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button class="btn btn-accent" onclick="simpanKalModal()">Simpan</button>
+    </div>`);
+}
+function simpanKalModal(){
+  const daftar=((kalRahasia&&kalRahasia.sumber)||[]).map(x=>({...x}));
+  const lama=modalState.id ? daftar.find(x=>x.id===modalState.id) : null;
+  const nama=document.getElementById("kal-nama").value.trim();
+  const mentah=document.getElementById("kal-url").value.trim();
+  if(!nama){ alert("Nama kalender belum diisi."); return; }
+  let url=lama?lama.url:"", jenis=lama?(lama.jenis||""):"";
+  if(mentah || !lama){
+    if(!mentah){ alert("Tautan ICS belum diisi."); return; }
+    const n=normalTautan(mentah);
+    if(n.galat){ alert(n.galat); return; }
+    if(daftar.some(x=>x.url===n.url && x!==lama)){ alert("Kalender dengan tautan ini sudah tersambung."); return; }
+    url=n.url; jenis=n.jenis;
+  }
+  const isi={nama, url, jenis, cat:document.getElementById("kal-cat").value, warna:warnaAman(document.getElementById("kal-warna").value)};
+  if(lama) Object.assign(lama,isi);
+  else daftar.push({id:uid('k'), aktif:true, ...isi});
+  if(!tulisKalender({proxy:(kalRahasia&&kalRahasia.proxy)||"", sumber:daftar})) return;
+  closeModal(); render();
+  if(!kalProxy()) setTimeout(()=>alert("Kalender tersimpan. Isi alamat penghubung di bawahnya supaya meeting mulai diambil."),300);
+}
+function toggleKal(id){
+  const daftar=((kalRahasia&&kalRahasia.sumber)||[]).map(x=>x.id===id ? {...x, aktif:x.aktif===false} : x);
+  tulisKalender({proxy:(kalRahasia&&kalRahasia.proxy)||"", sumber:daftar});
+}
+function hapusKal(id){
+  const s=((kalRahasia&&kalRahasia.sumber)||[]).find(x=>x.id===id); if(!s) return;
+  konfirmasi({judul:'Putuskan kalender ini?',
+    pesan:`<strong>${esc(s.nama)}</strong><br><br>Meeting dari kalender ini hilang dari My Journey. Kalender aslinya di ${s.jenis==="google"?"Google":"Outlook"} tidak berubah, dan bisa disambungkan lagi kapan saja.`},
+    ()=>{
+      const daftar=kalRahasia.sumber.filter(x=>x.id!==id);
+      kal.events=kal.events.filter(e=>e.sumber!==id); delete kal.hasil[id]; simpanKal();
+      tulisKalender({proxy:kalRahasia.proxy||"", sumber:daftar});
+      render();
+    });
+}
+
+/* ---------- tampilan meeting ---------- */
+function renderKartuMeeting(){
+  if(!kal.sumber.length) return `
+    <div class="card">
+      <h3>Meeting</h3>
+      <div class="small muted">Sambungkan kalender Outlook dan Google supaya meeting muncul sendiri di sini dan di Jadwal, tanpa diketik ulang.</div>
+      <button class="btn btn-ghost btn-full section-gap" onclick="subView='atur';setTab('tugas')">Sambungkan kalender →</button>
+    </div>`;
+  const now=Date.now();
+  const aktif=new Set(kalSumberAktif().map(s=>s.id));
+  const semua=kal.events.filter(e=>aktif.has(e.sumber) && !e.seharian && !e.batal && !e.bebas);
+  const berjalan=semua.filter(e=>e.mulai<=now && e.selesai>now);
+  const berikut=semua.find(e=>e.mulai>now);
+  const hariIni=kalAcaraHari(dateKey(new Date())).filter(e=>!e.seharian);
+  const baru=kal.events.filter(e=>aktif.has(e.sumber) && kalBaru(e) && e.mulai>now && !e.batal).slice(0,4);
+  const gabung=e=>e.link?`<a class="btn btn-accent btn-sm" href="${esc(e.link)}" target="_blank" rel="noopener">Gabung</a>`:'';
+  const sorot=(label,e,detail)=>`
+    <div class="mtg-sorot" style="--mtg:${warnaAman((kalSumberById(e.sumber)||{}).warna)}">
+      <div style="flex:1;min-width:0">
+        <div class="mtg-label">${label}</div>
+        <div class="mtg-judul">${esc(e.judul)}</div>
+        <div class="small muted">${detail}</div>
+      </div>
+      ${gabung(e)}
+    </div>`;
+  const baris=e=>{
+    const s=kalSumberById(e.sumber)||{};
+    const lewat=e.selesai<=now;
+    return `<div class="row mtg-baris ${lewat?'lewat':''}">
+      <span class="time-text" style="min-width:44px">${jamMenit(e.mulai)}</span>
+      <span class="cat-dot" style="background:${warnaAman(s.warna)}"></span>
+      <span class="name ${e.batal?'batal':''}">${esc(e.judul)}${kalBaru(e)?' <span class="chip chip-baru">Baru</span>':''}</span>
+    </div>`;
+  };
+  const galat=kalSumberAktif().map(s=>({s,h:(kal.hasil||{})[s.id]})).filter(x=>x.h && x.h.ok===false);
+  const terakhir=Math.max(0,...Object.values(kal.hasil||{}).map(h=>h.waktu||0));
+  return `
+    <div class="card">
+      <h3>Meeting</h3>
+      ${berjalan.map(e=>sorot("Sedang berlangsung",e,`${jamMenit(e.mulai)}–${jamMenit(e.selesai)} · selesai ${teksSampai(e.selesai)}`)).join('')}
+      ${berikut?sorot("Berikutnya",berikut,`${jamMenit(berikut.mulai)}–${jamMenit(berikut.selesai)} · ${teksSampai(berikut.mulai)}`):(!berjalan.length?`<div class="small muted">Tidak ada meeting terjadwal ke depan.</div>`:'')}
+      ${baru.length?`
+        <div class="field-label section-gap">Baru masuk · 24 jam terakhir</div>
+        ${baru.map(e=>`<div class="row mtg-baris"><span class="name">${esc(e.judul)}<span class="small muted" style="display:block">${teksSampai(e.mulai)}</span></span><span class="chip chip-baru">Baru</span></div>`).join('')}`:''}
+      <div class="field-label section-gap">Hari ini</div>
+      ${hariIni.length?hariIni.map(baris).join(''):`<div class="small muted">Tidak ada meeting hari ini.</div>`}
+      ${galat.map(x=>`<div class="small section-gap" style="color:var(--warn)">${esc(x.s.nama)}: ${esc(x.h.galat||'gagal diperbarui')}</div>`).join('')}
+      <div class="week-actions section-gap" style="margin-bottom:0;align-items:center">
+        <span class="small muted" style="flex:1">${kalSedang?'Memperbarui…':(terakhir?`Diperbarui ${teksWaktuUpdate(terakhir)}`:'Belum diperbarui')}</span>
+        <button class="btn btn-line btn-sm" onclick="kalPerbaruiManual()" ${kalSedang?'disabled':''}>↻ Perbarui</button>
+        <button class="btn btn-ghost btn-sm" onclick="setTab('tugas')">Jadwal →</button>
+      </div>
+    </div>`;
 }
 
 /* ---------- render shell ---------- */
@@ -733,7 +1507,7 @@ function renderRingkasan(){
   let open=0;
   for(let i=0;i<7;i++){ open+=tasksForDay(weekKey,addDays(weekKey,i)).filter(t=>!t.done).length; }
   const goalsOpen=wk.goals.filter(g=>!g.done).length;
-  return `
+  return renderKartuMeeting()+`
     <div class="stat-grid">
       <div class="stat"><div class="label">Income ${fmtMonth(mkNow)}</div><div class="amount num">${fmtShort(b.income)}</div></div>
       <div class="stat ${free<0?'warn':'good'}"><div class="label">Free Uang</div><div class="amount num">${fmtShort(free)}</div></div>
@@ -1238,6 +2012,7 @@ function renderDataTab(){
       <div class="row"><span class="name">Target</span><span class="val num">${data.goals.length}</span></div>
       <div class="row"><span class="name">Rutinitas</span><span class="val num">${data.plan.recurring.length}</span></div>
       <div class="row"><span class="name">Minggu tersimpan</span><span class="val num">${Object.keys(data.plan.weeks).length}</span></div>
+      <div class="row"><span class="name">Meeting dari kalender (${kal.sumber.length} kalender)</span><span class="val num">${kal.events.length}</span></div>
     </div>`;
 }
 function unduhCadangan(){
@@ -1696,7 +2471,7 @@ function renderJadwal(){
       <button class="${subView==='atur'?'active':''}" onclick="setSub('atur')">Pengaturan</button>
     </div>`;
   if(subView==='rutin') return sub+renderRutin();
-  if(subView==='atur') return sub+renderTaskKategori()+renderKategori()+renderJamKerja();
+  if(subView==='atur') return sub+renderKalenderCard()+renderTaskKategori()+renderKategori()+renderJamKerja();
 
   const end=addDays(weekKey,6);
   const isThis = weekKey===mondayKey(new Date());
@@ -1752,7 +2527,10 @@ function renderJadwal(){
       <button class="btn btn-line btn-sm" onclick="goToday()">Ke minggu ini</button>
       <button class="btn btn-line btn-sm" onclick="copyWeek(-1)">Salin dari minggu lalu</button>
       <button class="btn btn-line btn-sm" onclick="copyWeek(1)">Salin ke minggu depan</button>
+      ${kal.sumber.length?`<button class="btn btn-line btn-sm" onclick="kalPerbaruiManual()" ${kalSedang?'disabled':''}>${kalSedang?'Memperbarui…':'↻ Kalender'}</button>`:''}
     </div>
+    ${kal.sumber.length && kal.sampai && (parseDate(weekKey).getTime()>=kal.sampai || parseDate(end).getTime()<kal.dari)
+      ? `<div class="kal-catatan">Meeting dari kalender hanya ditampilkan ${fmtDate(dateKey(new Date(kal.dari)))} – ${fmtDate(dateKey(new Date(kal.sampai-86400000)))}.</div>`:''}
 
     <div class="card">
       <h3>Target Minggu Ini</h3>
@@ -1785,7 +2563,21 @@ function renderDayCard(dateStr,isToday){
   const isWorkday=data.plan.work.days.includes(wd);
   const list=tasksForDay(weekKey,dateStr);
 
-  const tasksHtml=list.length?list.map(t=>{
+  const dayStart=d.getTime();
+  const acara=kalAcaraHari(dateStr);
+  const seharian=acara.filter(e=>e.seharian), mtg=acara.filter(e=>!e.seharian);
+  const menitDari=ms=>Math.max(0,Math.min(1440,Math.round((ms-dayStart)/60000)));
+  /* bentrok: tugas berjam (belum selesai) dan meeting sibuk yang waktunya bertumpuk */
+  const blok=[];
+  list.forEach(t=>{ const a=toMin(t.start), b=toMin(t.end); if(!t.done && a!=null && b!=null && b>a) blok.push({k:"t:"+t.id,s:a,e:b,nama:t.name}); });
+  mtg.forEach(m=>{ if(!m.batal && !m.bebas) blok.push({k:"m:"+m.id,s:menitDari(m.mulai),e:menitDari(m.selesai),nama:m.judul}); });
+  const chipBentrok=k=>{
+    const a=blok.find(x=>x.k===k); if(!a) return "";
+    const o=blok.find(x=>x.k!==k && x.s<a.e && a.s<x.e); if(!o) return "";
+    const n=o.nama.length>24 ? o.nama.slice(0,23)+"…" : o.nama;
+    return `<span class="chip chip-bentrok" title="Bentrok dengan ${esc(o.nama)}">Bentrok: ${esc(n)}</span>`;
+  };
+  const barisTugas=t=>{
     const c=catById(t.cat), p=PRIORITIES[t.prio]||PRIORITIES["Rutin"];
     const kt=taskCatById(t.kat);
     const dur=durMin(t.start,t.end);
@@ -1799,6 +2591,7 @@ function renderDayCard(dateStr,isToday){
             <span class="chip" style="background:${c.color}1A;color:${c.color}">${esc(c.name)}</span>
             ${kt?`<span class="chip" style="background:${kt.color};color:#fff">${esc(kt.name)}</span>`:''}
             ${t.start&&t.end?`<span class="time-text">${t.start}–${t.end} · ${fmtDur(dur)}</span>`:`<span class="time-text">tanpa jam</span>`}
+            ${chipBentrok('t:'+t.id)}
           </div>
         </div>
         <div class="task-actions">
@@ -1807,16 +2600,45 @@ function renderDayCard(dateStr,isToday){
                    <button class="icon-btn" onclick="removeTask('${t.id}')">✕</button>`}
         </div>
       </div>`;
-  }).join(''):`<div class="empty">Belum ada tugas.</div>`;
+  };
+  const barisMeeting=m=>{
+    const s=kalSumberById(m.sumber)||{nama:"Kalender",warna:"#2F5D50"};
+    const w=warnaAman(s.warna);
+    const lintas=m.mulai<dayStart || m.selesai>dayStart+86400000;
+    const lewat=m.selesai<=Date.now();
+    return `
+      <div class="task mtg ${lewat?'lewat':''}" style="--mtg:${w}">
+        <span class="mtg-bar" aria-hidden="true"></span>
+        <div class="task-body">
+          <div class="task-name ${m.batal?'batal':''}">${esc(m.judul)}${kalBaru(m)?' <span class="chip chip-baru">Baru</span>':''}</div>
+          <div class="task-meta">
+            <span class="chip" style="background:${w}1A;color:${w}">${esc(s.nama)}</span>
+            ${m.batal?'<span class="chip" style="background:var(--warn-soft);color:var(--warn)">Dibatalkan</span>':''}
+            ${m.bebas?'<span class="chip" style="background:var(--sage);color:var(--ink-soft)">Free</span>':''}
+            <span class="time-text">${jamMenit(m.mulai)}–${jamMenit(m.selesai)} · ${lintas?'lintas hari':fmtDur(Math.round((m.selesai-m.mulai)/60000))}</span>
+            ${chipBentrok('m:'+m.id)}
+          </div>
+          ${m.lokasi && !/^microsoft teams meeting$/i.test(m.lokasi)?`<div class="small muted" style="margin-top:3px">${esc(m.lokasi)}</div>`:''}
+        </div>
+        <div class="task-actions">${m.link && !lewat && !m.batal?`<a class="btn btn-accent btn-sm" href="${esc(m.link)}" target="_blank" rel="noopener">Gabung</a>`:''}</div>
+      </div>`;
+  };
+  const urut=[...list.map(t=>({u:toMin(t.start),h:barisTugas(t)})), ...mtg.map(m=>({u:menitDari(m.mulai),h:barisMeeting(m)}))];
+  urut.sort((a,b)=>a.u==null&&b.u==null?0 : a.u==null?1 : b.u==null?-1 : a.u-b.u);
+  const sehariHtml=seharian.length?`<div class="mtg-sehari">${seharian.map(e=>{
+    const w=warnaAman((kalSumberById(e.sumber)||{}).warna);
+    return `<span class="chip" style="background:${w}1A;color:${w}" title="Seharian">${esc(e.judul)}</span>`;
+  }).join('')}</div>`:'';
+  const tasksHtml=urut.length?urut.map(x=>x.h).join(''):`<div class="empty">Belum ada tugas.</div>`;
 
   let capHtml="";
   if(isWorkday && !isOff){
-    const cap=workCapacity(), used=usedOfficeMin(weekKey,dateStr);
+    const cap=workCapacity(), used=usedOfficeMin(weekKey,dateStr), mm=menitMeetingKantor(dateStr);
     const pct=cap?Math.min(100,Math.round(used/cap*100)):0;
     const over=used>cap;
     capHtml=`<div class="cap">
       <div class="cap-track"><div class="cap-fill ${over?'over':''}" style="width:${pct}%"></div></div>
-      <div class="cap-text">Jam kantor terpakai ${fmtDur(used)||'0 menit'} dari ${fmtDur(cap)}${over?' — kelebihan':''}</div>
+      <div class="cap-text">Jam kantor terpakai ${fmtDur(used)||'0 menit'} dari ${fmtDur(cap)}${mm?` · meeting ${fmtDur(mm)}`:''}${over?' — kelebihan':''}</div>
     </div>`;
   }
 
@@ -1829,6 +2651,7 @@ function renderDayCard(dateStr,isToday){
         <select class="day-note-select" onchange="setDayNote('${dateStr}',this.value)">${opts}</select>
       </div>
       ${isOff?`<div class="badge-off">${note.type}</div>`:''}
+      ${sehariHtml}
       ${capHtml}
       ${tasksHtml}
       <button class="btn btn-ghost btn-sm btn-full section-gap" onclick="openTaskModal('${dateStr}',null)">+ Tambah tugas</button>
@@ -2384,8 +3207,11 @@ function bersihkanLokal(){
     localStorage.removeItem(SNAP_KEY);
     localStorage.removeItem(SESI_KEY);
     localStorage.removeItem(PEMILIK_KEY);
+    localStorage.removeItem(KAL_KEY);
+    localStorage.removeItem(KAL_LIHAT_KEY);
   }catch(e){}
   cermin={}; antre=0; adaGalat="";
+  kal=kalKosong(); kalLihat={}; kalRahasia=null; kalKunciTerakhir=""; kalGalatAkses="";
   data=structuredClone(DEFAULT_DATA);
   simpanTanpaTanda();
 }
@@ -2690,6 +3516,7 @@ async function mulaiSinkron(uidLogin,email,pertamaKali){
   faseAwal=true; bentrok=[]; syncMode="menyambung"; perbaruiStatus();
   await pasangPendengar();
   faseAwal=false;
+  pasangPendengarKalender();
   simpanTanpaTanda();
   dorongPerubahan();
   syncMode="aman"; perbaruiStatus();
@@ -2825,24 +3652,10 @@ const manifest={name:"My Journey",short_name:"My Journey",start_url:".",display:
   icons:[{src:alamatIkon("icon-192.png"),sizes:"192x192",type:"image/png",purpose:"any"},
          {src:alamatIkon("icon-512.png"),sizes:"512x512",type:"image/png",purpose:"any"}]};
 document.getElementById("manifest-placeholder").href=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:"application/json"}));
-if("serviceWorker" in navigator){
-  const sw=`
-    const CACHE="my-journey-${APP_VERSION}";
-    self.addEventListener("install",e=>self.skipWaiting());
-    self.addEventListener("activate",e=>e.waitUntil(
-      caches.keys().then(k=>Promise.all(k.filter(n=>n!==CACHE).map(n=>caches.delete(n)))).then(()=>self.clients.claim())
-    ));
-    self.addEventListener("fetch",e=>{
-      if(e.request.method!=="GET") return;
-      e.respondWith(
-        fetch(e.request).then(r=>{
-          const salinan=r.clone();
-          caches.open(CACHE).then(c=>c.put(e.request,salinan)).catch(()=>{});
-          return r;
-        }).catch(()=>caches.match(e.request))
-      );
-    });`;
-  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"}))).catch(()=>{});
+/* Service worker dari berkas sw.js terpisah (versi blob sebelum 3.0 selalu gagal diam-diam).
+   Strateginya network-first: update app tetap langsung masuk saat online. */
+if("serviceWorker" in navigator && location.protocol==="https:"){
+  window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
 }
 
 const jumlahMigrasi = migrasiDompetLama();
@@ -2850,7 +3663,14 @@ render();
 syncSambungUlang();
 /* Data masuk sendiri lewat pendengar realtime, jadi tidak perlu ditarik manual.
    Yang perlu didorong saat app kembali aktif hanyalah perubahan lokal yang belum terkirim. */
-function saatKembaliAktif(){ if(syncAktif()) dorongPerubahan(); }
+function saatKembaliAktif(){ if(syncAktif()){ dorongPerubahan(); kalSegarkan(false); } }
+/* Kalender diambil ulang tiap 10 menit selama app terbuka; hitung mundur di Ringkasan diperbarui tiap menit. */
+setInterval(()=>{ if(!document.hidden) kalSegarkan(false); }, KAL_INTERVAL);
+setInterval(()=>{
+  if(document.hidden || currentTab!=="ringkasan") return;
+  if(document.getElementById("modal-bg").classList.contains("show")) return;
+  render();
+}, 60000);
 window.addEventListener("focus",saatKembaliAktif);
 window.addEventListener("offline",()=>{ if(syncAktif()){ syncMode="offline"; perbaruiStatus(); } });
 window.addEventListener("online",()=>{ if(syncAktif()){ syncMode="aman"; perbaruiStatus(); dorongPerubahan(); } });
