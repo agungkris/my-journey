@@ -210,6 +210,23 @@
   .mtg-judul{font-size:14px;font-weight:600;margin:2px 0;word-break:break-word;}
   .mtg-baris{justify-content:flex-start;}
   .mtg-baris.lewat{opacity:.5;}
+  .task.mtg .checkbox{border-color:var(--mtg);}
+  .task.mtg .checkbox.checked{background:var(--mtg);border-color:var(--mtg);}
+  .task.mtg.done .task-name{text-decoration:line-through;color:var(--ink-soft);}
+  .task.mtg .task-body{cursor:pointer;}
+  .task.mtg.absen .task-body{opacity:.5;}
+  .task.mtg.absen .task-name{text-decoration:line-through;}
+  .tanda-bentrok{display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:700;line-height:1;
+    color:#fff;background:var(--warn);border-radius:20px;padding:3px 7px;}
+  .time-text.bentrok{color:var(--warn);font-weight:600;}
+  .mtg-info{font-size:13px;line-height:1.5;margin-bottom:12px;}
+  .mtg-info>div{margin-bottom:6px;}
+  .peserta{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;}
+  .peserta span{font-size:12px;padding:4px 9px;border-radius:20px;background:var(--sage);}
+  .peserta .D{text-decoration:line-through;opacity:.6;}
+  .peserta .N,.peserta .T{background:#fff;border:1px dashed var(--sage-line);}
+  .mtg-pilih{display:flex;gap:8px;margin-bottom:8px;}
+  .mtg-pilih .btn{flex:1;white-space:normal;}
   .kal-catatan{font-size:11.5px;color:var(--ink-soft);margin:-4px 0 12px;}
   a.btn{display:inline-block;text-decoration:none;text-align:center;}
   .btn:disabled{opacity:.5;cursor:default;}
@@ -342,7 +359,7 @@
    supaya data yang sudah ada tetap terbaca. */
 const STORAGE_KEY = "peta-rencana-v1";
 const BACKUP_KEY = "peta-rencana-cadangan-otomatis";
-const APP_VERSION = "3.0";
+const APP_VERSION = "3.1";
 const DAY_NAMES = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
 const DAY_SHORT = ["Min","Sen","Sel","Rab","Kam","Jum","Sab"];
 const PRIORITIES = {
@@ -635,6 +652,24 @@ function migrasiKprKeCicilan(d){
 }
 
 /* ---------- week model ---------- */
+/* Penanda meeting (s = sudah terlaksana, x = tidak perlu hadir) disimpan di minggu
+   tempat meeting itu dimulai, field "mtg". Kuncinya hash pendek dari id acara. */
+function mtgKunci(e){
+  let h=0x811c9dc5; const s=String(e.id);
+  for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,0x01000193)>>>0; }
+  return "m"+h.toString(36);
+}
+function mtgMinggu(e){ return mondayKey(new Date(e.mulai)); }
+function statusMtg(e){ const w=data.plan.weeks[mtgMinggu(e)]; return (w && w.mtg && w.mtg[mtgKunci(e)]) || ""; }
+function cariMtg(k){ return (kal.events||[]).find(e=>mtgKunci(e)===k) || null; }
+function setStatusMtg(k,st){
+  const e=cariMtg(k); if(!e) return;
+  const w=getWeek(mtgMinggu(e));
+  if(!w.mtg) w.mtg={};
+  if(w.mtg[k]===st) delete w.mtg[k]; else w.mtg[k]=st;
+  save();
+}
+function toggleMtg(k){ setStatusMtg(k,"s"); render(); }
 function getWeek(key){
   if(!data.plan.weeks[key]) data.plan.weeks[key]={goals:[],tasks:[],dayNotes:{},recDone:{},recSkip:{}};
   const w=data.plan.weeks[key];
@@ -871,6 +906,8 @@ function icsUrai(teks){
         case "TRANSP": ev.transp = p.nilai.trim().toUpperCase(); break;
         case "X-MICROSOFT-CDO-BUSYSTATUS": ev.busy = p.nilai.trim().toUpperCase(); break;
         case "URL": ev.url = p.nilai.trim(); break;
+        case "ORGANIZER": ev.org = p; break;
+        case "ATTENDEE": (ev.peserta = ev.peserta || []).push(p); break;
         case "X-GOOGLE-CONFERENCE": ev.konferensi = p.nilai.trim(); break;
         case "X-MICROSOFT-SKYPETEAMSMEETINGURL": ev.konferensi = ev.konferensi || p.nilai.trim(); break;
       }
@@ -881,6 +918,20 @@ function icsUrai(teks){
     }
   }
   return {tabel, acara};
+}
+/* Nama orang dari ORGANIZER/ATTENDEE: pakai CN kalau ada, kalau tidak alamat emailnya */
+function icsOrang(p){
+  const cn = icsTeks(String(p.param.CN||"").replace(/^"+|"+$/g,"")).trim();
+  const mail = String(p.nilai||"").replace(/^mailto:/i,"").trim();
+  return (cn || mail).slice(0,80);
+}
+function icsPeserta(ev){
+  const org = ev.org ? icsOrang(ev.org) : "";
+  const daftar = (ev.peserta||[])
+    .filter(p=>!/^(ROOM|RESOURCE)$/i.test(p.param.CUTYPE||""))
+    .map(p=>({n:icsOrang(p), s:String(p.param.PARTSTAT||"").toUpperCase().charAt(0)}))
+    .filter(x=>x.n);
+  return {org, peserta:daftar.slice(0,40), pesertaN:daftar.length};
 }
 const POLA_LINK = /https?:\/\/(?:[\w-]+\.)*(?:teams\.microsoft\.com|teams\.live\.com|meet\.google\.com|zoom\.us|webex\.com)\/[^\s<>"'\])]+/i;
 function cariLink(ev){
@@ -1013,6 +1064,7 @@ function icsAcara(teks, dariMs, sampaiMs){
       link: cariLink(ev),
       batal: /^\s*(cancell?ed|dibatalkan)\s*:/i.test(judul),
       bebas: ev.transp==="TRANSPARENT" || ev.busy==="FREE",
+      ...icsPeserta(ev),
     });
   };
   acara.forEach(ev=>{
@@ -1123,7 +1175,7 @@ function menitMeetingKantor(dateStr){
   const ws=toMin(w.start), we=toMin(w.end), bs=toMin(w.breakStart), be=toMin(w.breakEnd);
   if(ws==null || we==null || we<=ws) return 0;
   const iv=kalAcaraHari(dateStr)
-    .filter(e=>!e.seharian && !e.batal && !e.bebas && kalSumberKantor(kalSumberById(e.sumber)))
+    .filter(e=>!e.seharian && !e.batal && !e.bebas && statusMtg(e)!=="x" && kalSumberKantor(kalSumberById(e.sumber)))
     .map(e=>[Math.max(ws,(e.mulai-a)/60000), Math.min(we,(e.selesai-a)/60000)])
     .filter(x=>x[1]>x[0]).sort((x,y)=>x[0]-y[0]);
   let tot=0, cs=null, ce=null;
@@ -1410,6 +1462,84 @@ function hapusKal(id){
     });
 }
 
+/* ---------- bentrok ----------
+   Tugas berjam (belum selesai) dan meeting sibuk yang waktunya bertumpuk dikelompokkan.
+   Setiap kelompok diberi nomor; item bernomor sama saling bentrok. */
+function bentrokHari(dateStr){
+  const a=parseDate(dateStr).getTime();
+  const menit=ms=>Math.max(0,Math.min(1440,Math.round((ms-a)/60000)));
+  const blok=[];
+  tasksForDay(mondayKey(parseDate(dateStr)),dateStr).forEach(t=>{
+    const s=toMin(t.start), e=toMin(t.end);
+    if(!t.done && s!=null && e!=null && e>s) blok.push({k:"t:"+t.id, s, e, nama:t.name});
+  });
+  kalAcaraHari(dateStr).forEach(m=>{
+    if(m.seharian || m.batal || m.bebas || statusMtg(m)==="x") return;
+    blok.push({k:"m:"+m.id, s:menit(m.mulai), e:menit(m.selesai), nama:m.judul});
+  });
+  blok.sort((x,y)=>x.s-y.s || x.e-y.e);
+  const hasil={}; let no=0, grup=[], ujung=-1;
+  const tutup=()=>{
+    if(grup.length>1){
+      no++;
+      grup.forEach(b=>{ hasil[b.k]={no, lain:grup.filter(x=>x!==b && x.s<b.e && b.s<x.e).map(x=>x.nama)}; });
+    }
+    grup=[];
+  };
+  blok.forEach(b=>{
+    if(grup.length && b.s<ujung){ grup.push(b); ujung=Math.max(ujung,b.e); }
+    else { tutup(); grup=[b]; ujung=b.e; }
+  });
+  tutup();
+  return hasil;
+}
+function tandaBentrok(g){
+  return g ? `<span class="tanda-bentrok" title="Bentrok dengan ${esc(g.lain.join(", "))}" aria-label="Bentrok dengan ${esc(g.lain.join(", "))}">⚠ ${g.no}</span>` : "";
+}
+
+/* ---------- detail meeting ---------- */
+function openMtgModal(k){
+  const e=cariMtg(k); if(!e) return;
+  const s=kalSumberById(e.sumber)||{nama:"Kalender",warna:"#2F5D50",jenis:""};
+  const w=warnaAman(s.warna), st=statusMtg(e);
+  const tgl=dateKey(new Date(e.mulai));
+  const g=e.seharian ? null : bentrokHari(tgl)["m:"+e.id];
+  const ps=e.peserta||[];
+  const urutSt={A:0,T:1,N:2,"":3,D:4};
+  const label={A:"menerima",T:"mungkin",N:"belum menjawab",D:"menolak"};
+  const daftar=ps.slice().sort((x,y)=>(urutSt[x.s]??3)-(urutSt[y.s]??3));
+  const lewat=e.selesai<=Date.now();
+  modalState={type:'mtg',k};
+  openModal(`
+    <h3 style="margin-bottom:6px">${esc(e.judul)}</h3>
+    <div class="mtg-info">
+      <div class="muted">${DAY_NAMES[new Date(e.mulai).getDay()]}, ${fmtDate(tgl)}${e.seharian?' · seharian':` · ${jamMenit(e.mulai)}–${jamMenit(e.selesai)} (${fmtDur(Math.round((e.selesai-e.mulai)/60000))})`}</div>
+      <div><span class="chip" style="background:${w}1A;color:${w}">${esc(s.nama)}</span>
+        ${e.batal?'<span class="chip" style="background:var(--warn-soft);color:var(--warn)">Dibatalkan</span>':''}
+        ${kalBaru(e)?'<span class="chip chip-baru">Baru</span>':''}</div>
+      ${e.lokasi?`<div>📍 ${esc(e.lokasi)}</div>`:''}
+      ${g?`<div style="color:var(--warn);font-weight:600">⚠ ${g.no} · Bentrok dengan ${esc(g.lain.join(", "))}</div>`:''}
+      ${e.org?`<div>Penyelenggara: <strong>${esc(e.org)}</strong></div>`:''}
+    </div>
+    <span class="field-label">Peserta${e.pesertaN?` (${e.pesertaN})`:''}</span>
+    ${daftar.length?`<div class="peserta">${daftar.map(x=>`<span class="${x.s}" title="${esc(label[x.s]||'')}">${x.s==='A'?'✓ ':x.s==='D'?'✕ ':x.s==='T'?'? ':''}${esc(x.n)}</span>`).join('')}</div>
+      ${e.pesertaN>daftar.length?`<div class="small muted">+${e.pesertaN-daftar.length} lainnya</div>`:''}
+      <div class="small muted" style="margin-bottom:12px">✓ menerima · ? mungkin · garis putus = belum menjawab · coret = menolak</div>`
+     :`<div class="small muted" style="margin-bottom:12px">Kalender ini tidak menyertakan daftar peserta.</div>`}
+    ${e.seharian?'':`
+    <span class="field-label">Penanda di My Journey</span>
+    <div class="mtg-pilih">
+      <button class="btn ${st==='s'?'btn-accent':'btn-line'}" onclick="pilihStatusMtg('${k}','s')">✓ Sudah terlaksana</button>
+      <button class="btn ${st==='x'?'btn-warn':'btn-line'}" onclick="pilihStatusMtg('${k}','x')">Tidak perlu hadir</button>
+    </div>
+    <div class="small muted">${st?'Ketuk lagi tombol yang aktif untuk menghapus penanda. ':''}Penanda ini hanya di My Journey — undangan di ${s.jenis==="google"?"Google":"Outlook"} tidak berubah. Untuk menolak undangan, tetap lewat ${s.jenis==="google"?"Google Calendar":"Outlook"}.</div>`}
+    <div class="modal-actions section-gap">
+      ${e.link && !lewat && !e.batal && st!=='x'?`<a class="btn btn-accent" href="${esc(e.link)}" target="_blank" rel="noopener">Gabung</a>`:''}
+      <button class="btn btn-ghost" onclick="closeModal()">Tutup</button>
+    </div>`);
+}
+function pilihStatusMtg(k,st){ setStatusMtg(k,st); render(); openMtgModal(k); }
+
 /* ---------- tampilan meeting ---------- */
 function renderKartuMeeting(){
   if(!kal.sumber.length) return `
@@ -1420,28 +1550,29 @@ function renderKartuMeeting(){
     </div>`;
   const now=Date.now();
   const aktif=new Set(kalSumberAktif().map(s=>s.id));
-  const semua=kal.events.filter(e=>aktif.has(e.sumber) && !e.seharian && !e.batal && !e.bebas);
+  const semua=kal.events.filter(e=>aktif.has(e.sumber) && !e.seharian && !e.batal && !e.bebas && statusMtg(e)!=="x");
   const berjalan=semua.filter(e=>e.mulai<=now && e.selesai>now);
   const berikut=semua.find(e=>e.mulai>now);
   const hariIni=kalAcaraHari(dateKey(new Date())).filter(e=>!e.seharian);
-  const baru=kal.events.filter(e=>aktif.has(e.sumber) && kalBaru(e) && e.mulai>now && !e.batal).slice(0,4);
+  const baru=kal.events.filter(e=>aktif.has(e.sumber) && kalBaru(e) && e.mulai>now && !e.batal && statusMtg(e)!=="x").slice(0,4);
   const gabung=e=>e.link?`<a class="btn btn-accent btn-sm" href="${esc(e.link)}" target="_blank" rel="noopener">Gabung</a>`:'';
   const sorot=(label,e,detail)=>`
     <div class="mtg-sorot" style="--mtg:${warnaAman((kalSumberById(e.sumber)||{}).warna)}">
       <div style="flex:1;min-width:0">
         <div class="mtg-label">${label}</div>
-        <div class="mtg-judul">${esc(e.judul)}</div>
+        <div class="mtg-judul" style="cursor:pointer" onclick="openMtgModal('${mtgKunci(e)}')">${esc(e.judul)}</div>
         <div class="small muted">${detail}</div>
       </div>
       ${gabung(e)}
     </div>`;
   const baris=e=>{
     const s=kalSumberById(e.sumber)||{};
-    const lewat=e.selesai<=now;
-    return `<div class="row mtg-baris ${lewat?'lewat':''}">
+    const lewat=e.selesai<=now, st=statusMtg(e);
+    return `<div class="row mtg-baris ${lewat||st==='x'?'lewat':''}" style="cursor:pointer" onclick="openMtgModal('${mtgKunci(e)}')">
       <span class="time-text" style="min-width:44px">${jamMenit(e.mulai)}</span>
       <span class="cat-dot" style="background:${warnaAman(s.warna)}"></span>
-      <span class="name ${e.batal?'batal':''}">${esc(e.judul)}${kalBaru(e)?' <span class="chip chip-baru">Baru</span>':''}</span>
+      <span class="name ${e.batal||st?'batal':''}">${esc(e.judul)}${kalBaru(e)?' <span class="chip chip-baru">Baru</span>':''}</span>
+      ${st==='s'?'<span class="small" style="color:var(--good);font-weight:700">✓</span>':st==='x'?'<span class="small muted">tidak hadir</span>':''}
     </div>`;
   };
   const galat=kalSumberAktif().map(s=>({s,h:(kal.hasil||{})[s.id]})).filter(x=>x.h && x.h.ok===false);
@@ -2567,16 +2698,7 @@ function renderDayCard(dateStr,isToday){
   const acara=kalAcaraHari(dateStr);
   const seharian=acara.filter(e=>e.seharian), mtg=acara.filter(e=>!e.seharian);
   const menitDari=ms=>Math.max(0,Math.min(1440,Math.round((ms-dayStart)/60000)));
-  /* bentrok: tugas berjam (belum selesai) dan meeting sibuk yang waktunya bertumpuk */
-  const blok=[];
-  list.forEach(t=>{ const a=toMin(t.start), b=toMin(t.end); if(!t.done && a!=null && b!=null && b>a) blok.push({k:"t:"+t.id,s:a,e:b,nama:t.name}); });
-  mtg.forEach(m=>{ if(!m.batal && !m.bebas) blok.push({k:"m:"+m.id,s:menitDari(m.mulai),e:menitDari(m.selesai),nama:m.judul}); });
-  const chipBentrok=k=>{
-    const a=blok.find(x=>x.k===k); if(!a) return "";
-    const o=blok.find(x=>x.k!==k && x.s<a.e && a.s<x.e); if(!o) return "";
-    const n=o.nama.length>24 ? o.nama.slice(0,23)+"…" : o.nama;
-    return `<span class="chip chip-bentrok" title="Bentrok dengan ${esc(o.nama)}">Bentrok: ${esc(n)}</span>`;
-  };
+  const bentrok=bentrokHari(dateStr);
   const barisTugas=t=>{
     const c=catById(t.cat), p=PRIORITIES[t.prio]||PRIORITIES["Rutin"];
     const kt=taskCatById(t.kat);
@@ -2590,8 +2712,8 @@ function renderDayCard(dateStr,isToday){
             <span class="chip" style="background:${p.bg};color:${p.fg}">${t.prio||'Rutin'}</span>
             <span class="chip" style="background:${c.color}1A;color:${c.color}">${esc(c.name)}</span>
             ${kt?`<span class="chip" style="background:${kt.color};color:#fff">${esc(kt.name)}</span>`:''}
-            ${t.start&&t.end?`<span class="time-text">${t.start}–${t.end} · ${fmtDur(dur)}</span>`:`<span class="time-text">tanpa jam</span>`}
-            ${chipBentrok('t:'+t.id)}
+            ${t.start&&t.end?`<span class="time-text ${bentrok['t:'+t.id]?'bentrok':''}">${t.start}–${t.end} · ${fmtDur(dur)}</span>`:`<span class="time-text">tanpa jam</span>`}
+            ${tandaBentrok(bentrok['t:'+t.id])}
           </div>
         </div>
         <div class="task-actions">
@@ -2603,31 +2725,31 @@ function renderDayCard(dateStr,isToday){
   };
   const barisMeeting=m=>{
     const s=kalSumberById(m.sumber)||{nama:"Kalender",warna:"#2F5D50"};
-    const w=warnaAman(s.warna);
+    const w=warnaAman(s.warna), k=mtgKunci(m), st=statusMtg(m), g=bentrok["m:"+m.id];
     const lintas=m.mulai<dayStart || m.selesai>dayStart+86400000;
     const lewat=m.selesai<=Date.now();
     return `
-      <div class="task mtg ${lewat?'lewat':''}" style="--mtg:${w}">
-        <span class="mtg-bar" aria-hidden="true"></span>
-        <div class="task-body">
+      <div class="task mtg ${lewat&&!st?'lewat':''} ${st==='s'?'done':''} ${st==='x'?'absen':''}" style="--mtg:${w}">
+        <div class="checkbox ${st==='s'?'checked':''}" onclick="toggleMtg('${k}')" aria-label="Tandai sudah terlaksana">${st==='s'?'✓':''}</div>
+        <div class="task-body" onclick="openMtgModal('${k}')">
           <div class="task-name ${m.batal?'batal':''}">${esc(m.judul)}${kalBaru(m)?' <span class="chip chip-baru">Baru</span>':''}</div>
           <div class="task-meta">
             <span class="chip" style="background:${w}1A;color:${w}">${esc(s.nama)}</span>
             ${m.batal?'<span class="chip" style="background:var(--warn-soft);color:var(--warn)">Dibatalkan</span>':''}
+            ${st==='x'?'<span class="chip" style="background:var(--line);color:var(--ink-soft)">Tidak hadir</span>':''}
             ${m.bebas?'<span class="chip" style="background:var(--sage);color:var(--ink-soft)">Free</span>':''}
-            <span class="time-text">${jamMenit(m.mulai)}–${jamMenit(m.selesai)} · ${lintas?'lintas hari':fmtDur(Math.round((m.selesai-m.mulai)/60000))}</span>
-            ${chipBentrok('m:'+m.id)}
+            <span class="time-text ${g?'bentrok':''}">${jamMenit(m.mulai)}–${jamMenit(m.selesai)} · ${lintas?'lintas hari':fmtDur(Math.round((m.selesai-m.mulai)/60000))}</span>
+            ${tandaBentrok(g)}
           </div>
-          ${m.lokasi && !/^microsoft teams meeting$/i.test(m.lokasi)?`<div class="small muted" style="margin-top:3px">${esc(m.lokasi)}</div>`:''}
         </div>
-        <div class="task-actions">${m.link && !lewat && !m.batal?`<a class="btn btn-accent btn-sm" href="${esc(m.link)}" target="_blank" rel="noopener">Gabung</a>`:''}</div>
+        <div class="task-actions">${m.link && !lewat && !m.batal && st!=='x'?`<a class="btn btn-accent btn-sm" href="${esc(m.link)}" target="_blank" rel="noopener">Gabung</a>`:''}</div>
       </div>`;
   };
   const urut=[...list.map(t=>({u:toMin(t.start),h:barisTugas(t)})), ...mtg.map(m=>({u:menitDari(m.mulai),h:barisMeeting(m)}))];
   urut.sort((a,b)=>a.u==null&&b.u==null?0 : a.u==null?1 : b.u==null?-1 : a.u-b.u);
   const sehariHtml=seharian.length?`<div class="mtg-sehari">${seharian.map(e=>{
     const w=warnaAman((kalSumberById(e.sumber)||{}).warna);
-    return `<span class="chip" style="background:${w}1A;color:${w}" title="Seharian">${esc(e.judul)}</span>`;
+    return `<span class="chip" style="background:${w}1A;color:${w};cursor:pointer" title="Seharian" onclick="openMtgModal('${mtgKunci(e)}')">${esc(e.judul)}</span>`;
   }).join('')}</div>`:'';
   const tasksHtml=urut.length?urut.map(x=>x.h).join(''):`<div class="empty">Belum ada tugas.</div>`;
 
@@ -3173,7 +3295,7 @@ const FB_VER    = "10.12.2";
 const SESI_KEY  = "my-journey-sesi";
 const SNAP_KEY  = "my-journey-cermin";
 const PEMILIK_KEY = "my-journey-pemilik";   /* UID pemilik isi localStorage saat ini */
-const MAP_DALAM = new Set(["pos","inc","tasks","wg","dayNotes","recDone","recSkip"]);
+const MAP_DALAM = new Set(["pos","inc","tasks","wg","dayNotes","recDone","recSkip","mtg"]);
 
 let fb = null;
 let unsubs = [];
@@ -3241,7 +3363,10 @@ function keMinggu(w){
   const wg={}, wgOrd=[], tasks={}, tOrd=[];
   (w.goals||[]).forEach(g=>{ const c={...g}; delete c.id; wgOrd.push(g.id); wg[g.id]=c; });
   (w.tasks||[]).forEach(t=>{ const c={...t}; delete c.id; tOrd.push(t.id); tasks[t.id]=c; });
-  return {wg,wgOrd,tasks,tOrd,dayNotes:w.dayNotes||{},recDone:w.recDone||{},recSkip:w.recSkip||{}};
+  const o={wg,wgOrd,tasks,tOrd,dayNotes:w.dayNotes||{},recDone:w.recDone||{},recSkip:w.recSkip||{}};
+  /* field mtg baru ditulis setelah ada penanda pertama di minggu itu — minggu lain tidak ikut berubah */
+  if(w.mtg && typeof w.mtg==="object") o.mtg=w.mtg;
+  return o;
 }
 function dariMinggu(d){
   const wgOrd = Array.isArray(d.wgOrd) ? d.wgOrd : Object.keys(d.wg||{});
@@ -3249,7 +3374,8 @@ function dariMinggu(d){
   return {
     goals: wgOrd.filter(i=>d.wg&&d.wg[i]).map(i=>({id:i,...d.wg[i]})),
     tasks: tOrd.filter(i=>d.tasks&&d.tasks[i]).map(i=>({id:i,...d.tasks[i]})),
-    dayNotes:d.dayNotes||{}, recDone:d.recDone||{}, recSkip:d.recSkip||{}
+    dayNotes:d.dayNotes||{}, recDone:d.recDone||{}, recSkip:d.recSkip||{},
+    ...(d.mtg && typeof d.mtg==="object" ? {mtg:d.mtg} : {})
   };
 }
 
