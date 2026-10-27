@@ -382,7 +382,7 @@
    supaya data yang sudah ada tetap terbaca. */
 const STORAGE_KEY = "peta-rencana-v1";
 const BACKUP_KEY = "peta-rencana-cadangan-otomatis";
-const APP_VERSION = "4.0";
+const APP_VERSION = "4.0.1";
 const DAY_NAMES = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
 const DAY_SHORT = ["Min","Sen","Sel","Rab","Kam","Jum","Sab"];
 const PRIORITIES = {
@@ -2302,7 +2302,8 @@ function renderDataTab(){
       </div>
       <div class="row section-gap"><span class="name">Versi app</span><span class="val num">${APP_VERSION}</span></div>
       <div class="row"><span class="name">Salinan pengaman terakhir</span><span class="val small">${cad?cad.waktu.toLocaleString("id-ID",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}):'belum ada'}</span></div>
-      ${cad?`<button class="btn btn-line btn-sm btn-full section-gap" onclick="pulihkanCadanganOtomatis()">Pulihkan salinan pengaman (${cad.trx} transaksi, dari versi ${esc(cad.dariVersi)})</button>`:''}
+      ${cad?`<button class="btn btn-line btn-sm btn-full section-gap" onclick="pulihkanAnggaranDariSalinan()">Pulihkan anggaran bulan tertentu dari salinan ini</button>
+      <button class="btn btn-line btn-sm btn-full section-gap" onclick="pulihkanCadanganOtomatis()">Pulihkan seluruh salinan pengaman (${cad.trx} transaksi, dari versi ${esc(cad.dariVersi)})</button>`:''}
     </div>
 
     <div class="card">
@@ -2313,6 +2314,8 @@ function renderDataTab(){
       <button class="btn btn-line btn-full section-gap" onclick="unduhCadangan()">Unduh JSON (.json)</button>
       <input type="file" id="file-restore" accept=".json,.xlsx,application/json,${XL_MIME}" style="display:none" onchange="muatBerkasCadangan(event)" />
       <button class="btn btn-ghost btn-full section-gap" onclick="document.getElementById('file-restore').click()">Pulihkan dari berkas (.xlsx atau .json)</button>
+      <input type="file" id="file-pulih-anggaran" accept=".json,.xlsx,application/json,${XL_MIME}" style="display:none" onchange="muatBerkasPulihAnggaran(event)" />
+      <button class="btn btn-line btn-sm btn-full section-gap" onclick="document.getElementById('file-pulih-anggaran').click()">Pulihkan anggaran bulan tertentu dari berkas</button>
     </div>
 
     <div class="card">
@@ -2661,6 +2664,69 @@ function pulihkanCadanganOtomatis(){
       alert("Data dikembalikan ke salinan pengaman.");
       render();
     });
+}
+/* ---------- pulihkan anggaran per bulan ----------
+   Mengambil satu bulan saja dari salinan pengaman atau berkas cadangan, tanpa
+   menyentuh bagian lain (transaksi, target, jadwal, bulan lain). */
+let pulihSumber=null, pulihLabel="";
+function ringkasBulan(b){
+  if(!b) return "kosong";
+  const items=b.items||[], total=items.reduce((s,i)=>s+(Number(i.amount)||0),0);
+  return `${items.length} pos · ${fmtShort(total)}`;
+}
+function bulanBisaDipulihkan(src){
+  const M=(src&&src.budget&&src.budget.months)||{};
+  return Object.keys(M).sort().filter(mk=>{
+    const b=M[mk]; if(!b||b.warisan) return false;
+    const kini=data.budget.months[mk];
+    if(!kini || kini.warisan) return true;
+    return kanonik(keAnggaran(structuredClone(b)))!==kanonik(keAnggaran(structuredClone(kini)));
+  });
+}
+function bukaPulihkanAnggaran(src,label){
+  pulihSumber=src; pulihLabel=label;
+  const daftar=bulanBisaDipulihkan(src);
+  const M=src.budget.months;
+  const rows=daftar.map(mk=>{
+    const kini=data.budget.months[mk];
+    return `<div class="row">
+      <div style="flex:1;min-width:0">
+        <div><strong>${fmtMonth(mk)}</strong></div>
+        <div class="small muted">Di ${esc(label)}: ${ringkasBulan(M[mk])}<br>Sekarang: ${kini&&!kini.warisan?ringkasBulan(kini):'salinan otomatis / kosong'}</div>
+      </div>
+      <button class="btn btn-line btn-sm" onclick="pulihkanBulan('${mk}')">Pulihkan</button>
+    </div>`;
+  }).join('');
+  modalState={type:'pulih-anggaran'};
+  openModal(`
+    <h3>Pulihkan Anggaran per Bulan</h3>
+    <div class="small muted" style="margin-bottom:10px">Dari ${esc(label)}. Hanya bulan yang isinya berbeda dengan sekarang yang ditampilkan. Bagian lain app tidak berubah.</div>
+    ${rows||'<div class="empty">Tidak ada bulan yang berbeda — anggaran di sini sudah sama dengan sumber ini.</div>'}
+    <div class="modal-actions section-gap"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div>`);
+}
+function pulihkanBulan(mk){
+  const b=pulihSumber&&pulihSumber.budget&&pulihSumber.budget.months[mk]; if(!b) return;
+  const salin=structuredClone(b); delete salin.warisan; pastikanIncomes(salin);
+  data.budget.months[mk]=salin;
+  save(); render();
+  bukaPulihkanAnggaran(pulihSumber,pulihLabel);
+}
+function pulihkanAnggaranDariSalinan(){
+  const b=JSON.parse(localStorage.getItem(BACKUP_KEY)||"null");
+  if(!b||!b.isi){ alert("Tidak ada salinan pengaman."); return; }
+  let src; try{ src=JSON.parse(b.isi); }catch(e){ alert("Salinan pengaman tidak terbaca."); return; }
+  const w=new Date(b.waktu).toLocaleString("id-ID",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+  bukaPulihkanAnggaran(src,"salinan pengaman "+w);
+}
+function muatBerkasPulihAnggaran(ev){
+  const f=ev.target.files&&ev.target.files[0]; if(!f) return;
+  const selesai=json=>{
+    let src; try{ src=JSON.parse(json); }catch(e){ alert("Isi berkas tidak terbaca."); return; }
+    if(!src||!src.budget||!src.budget.months){ alert("Berkas ini tidak berisi anggaran My Journey."); return; }
+    bukaPulihkanAnggaran(src,"berkas "+f.name);
+  };
+  const p = (/\.xlsx$/i.test(f.name)||f.type===XL_MIME) ? f.arrayBuffer().then(jsonDariExcel) : f.text();
+  p.then(selesai).catch(e=>alert((e&&e.message)||"Berkas tidak terbaca.")).finally(()=>{ ev.target.value=""; });
 }
 function salinEkspor(){
   const box=document.getElementById("export-box");
@@ -3914,7 +3980,10 @@ function petaLokal(){
   m["meta/pengaturan"] = {work:data.plan.work||{}, categories:data.plan.categories||[],
                           taskCats:data.plan.taskCats||[], trxCats:data.trxCats||[], periode:data.periode||[]};
   m["anggaran/__awal"] = keAnggaran(data.budget.awal||{});
-  Object.entries(data.budget.months||{}).forEach(([k,v])=>{ m["anggaran/"+k]=keAnggaran(v); });
+  /* Bulan yang masih "disalin dari bulan sebelumnya" (belum pernah disentuh) TIDAK dikirim:
+     salinan itu dibuat ulang di tiap perangkat, dan kalau ikut dikirim bisa menimpa isi
+     asli bulan yang sama dari perangkat lain yang belum sempat diterima (bug s.d. 4.0). */
+  Object.entries(data.budget.months||{}).forEach(([k,v])=>{ if(!v.warisan) m["anggaran/"+k]=keAnggaran(v); });
   Object.entries(data.plan.weeks||{}).forEach(([k,v])=>{ m["jadwal/"+k]=keMinggu(v); });
   (data.dompet||[]).forEach(t=>{
     m["trx/"+String(t.id)] = {id:t.id, tanggal:t.tanggal||"", keterangan:t.keterangan||"",
@@ -3994,6 +4063,7 @@ function tandaiAntre(p){
 }
 function dorongPerubahan(){
   if(!syncAktif()) return;
+  if(faseAwal){ jadwalkanDorong(); return; }   /* tunggu isi server selesai diterima dulu */
   const peta=petaLokal();
   let n=0;
   for(const path in peta){
@@ -4015,6 +4085,7 @@ function dorongPerubahan(){
   for(const path in cermin){
     if(path in peta) continue;
     if(path.startsWith("meta/")) continue;   /* dokumen meta dari versi lain — jangan dihapus */
+    if(path.startsWith("anggaran/") && data.budget.months[path.slice(9)]) continue;   /* di sini masih salinan otomatis */
     delete cermin[path]; n++;
     try{ tandaiAntre(fb.F.deleteDoc(refPath(path))); }catch(e){ adaGalat=pesanGalat(e); }
   }
