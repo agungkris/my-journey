@@ -196,6 +196,24 @@
   .cic-bar span{display:block;height:100%;background:var(--accent);}
   .cic-tahap{margin-top:10px;border-top:1px solid var(--line);padding-top:4px;}
   .goal-text{flex:1;font-size:13.5px;}
+  /* ---- dompet: transaksi dari email ---- */
+  .masuk-card{border-color:var(--accent);}
+  .masuk-item{gap:9px;}
+  .masuk-item .checkbox{margin-top:0;width:22px;height:22px;}
+  .masuk-item .trx-icon{width:32px;height:32px;font-size:15px;}
+  .masuk-item .trx-amt{font-size:12.5px;}
+  .masuk-item .icon-btn{padding:2px 2px;}
+  /* ---- anggaran: ceklis pos ---- */
+  .pos-row{gap:8px;}
+  .pos-row .checkbox{margin-top:0;width:22px;height:22px;}
+  .pos-row .pos-nama{flex:1;min-width:0;}
+  .pos-row .pos-jml{flex:0 0 46%;min-width:0;}
+  .row > .rp-wrap .rp-prefix{padding:8px 2px 8px 8px;}
+  .row > .rp-wrap .rp-input{padding:8px 8px 8px 2px !important;min-width:0;}
+  .pos-row .pos-jml .rp-input{min-width:0;width:100%;}
+  .pos-row .icon-btn{flex:0 0 auto;}
+  .pos-ringkas{background:var(--good-soft);border-radius:12px;padding:10px 12px;margin-bottom:6px;}
+  .pos-ringkas .progress-track{background:#fff;margin:7px 0 5px;}
 
   /* ---- meeting dari kalender ---- */
   .task.mtg .mtg-bar{width:4px;align-self:stretch;min-height:34px;border-radius:4px;background:var(--mtg);flex:0 0 auto;margin:0 7px 0 8px;}
@@ -364,7 +382,7 @@
    supaya data yang sudah ada tetap terbaca. */
 const STORAGE_KEY = "peta-rencana-v1";
 const BACKUP_KEY = "peta-rencana-cadangan-otomatis";
-const APP_VERSION = "3.2";
+const APP_VERSION = "4.0";
 const DAY_NAMES = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
 const DAY_SHORT = ["Min","Sen","Sel","Rab","Kam","Jum","Sab"];
 const PRIORITIES = {
@@ -1692,7 +1710,9 @@ function renderRingkasan(){
     <div class="card">
       <h3>Pengeluaran Bulan Ini</h3>
       <div class="row"><span class="name">Tercatat di Dompet</span><span class="val num">${fmt(pengeluaranBulanIni())}</span></div>
+      ${masuk.length?`<div class="row" style="cursor:pointer" onclick="dompetSub='transaksi';setTab('dompet')"><span class="name">Menunggu konfirmasi dari email</span><span class="chip chip-baru">${masuk.length}</span></div>`:''}
       <div class="row"><span class="name muted small">Anggaran keluar per bulan ${fmtShort(totalOutcome(mkNow))}</span></div>
+      ${b.items.length?`<div class="row"><span class="name">Pos sudah dialokasikan</span><span class="val num">${b.items.filter(it=>posSudah(b,it)).length} / ${b.items.length}</span></div>`:''}
       <button class="btn btn-ghost btn-full section-gap" onclick="setTab('dompet')">Buka dompet →</button>
     </div>
     <div class="card">
@@ -1768,7 +1788,7 @@ function renderDompet(){
 
   if(dompetSub==="rekap") return head+filterCard+renderRekap(list,total);
 
-  if(!list.length) return head+filterCard+`<div class="card"><div class="empty">${data.dompet.length?'Tidak ada transaksi pada filter ini.':'Belum ada transaksi.'}</div></div>`;
+  if(!list.length) return head+renderKartuMasuk()+filterCard+`<div class="card"><div class="empty">${data.dompet.length?'Tidak ada transaksi pada filter ini.':'Belum ada transaksi.'}</div></div>`;
 
   const byDate={};
   list.forEach(t=>{ (byDate[t.tanggal]=byDate[t.tanggal]||[]).push(t); });
@@ -1793,7 +1813,7 @@ function renderDompet(){
     }).join('');
     return `<div class="date-head">${fmtDate(d)} · ${fmt(dayTotal)}</div><div class="card" style="margin-bottom:0">${rows}</div>`;
   }).join('');
-  return head+filterCard+body;
+  return head+renderKartuMasuk()+filterCard+body;
 }
 
 /* --- rentang tanggal --- */
@@ -2124,6 +2144,143 @@ function pengeluaranBulan(mk){
 }
 function pengeluaranBulanIni(){ return pengeluaranBulan(monthKeyOf(new Date())); }
 
+/* ================= TRANSAKSI DARI EMAIL (menunggu konfirmasi) =================
+   Pembaca email (Google Apps Script di akun Gmail pemilik) menulis tiap notifikasi
+   transaksi ke users/{uid}/masuk/{idEmail} dengan status "baru". Koleksi ini tidak
+   lewat mekanisme sinkron/cermin; dibaca dengan pendengar sendiri.
+   Hanya yang diceklis lalu dicatat yang masuk ke Dompet. Status di dokumen berubah
+   jadi "dicatat" atau "diabaikan", jadi semua perangkat melihat hasil yang sama. */
+let masuk = [];                 /* dokumen berstatus "baru", terbaru di atas */
+let masukPilih = new Set();     /* id yang sedang diceklis (hanya di perangkat ini) */
+let masukGalat = "", masukSiap = false;
+
+function refMasuk(id){ return fb.F.doc(fb.db,"users",fb.uid,"masuk",id); }
+function pasangPendengarMasuk(){
+  const q=fb.F.query(fb.F.collection(fb.db,"users",fb.uid,"masuk"), fb.F.where("status","==","baru"));
+  const stop=fb.F.onSnapshot(q, snap=>{
+    masuk=snap.docs.map(d=>({...d.data(), id:d.id}))
+      .sort((a,b)=>(String(b.tanggal)+String(b.jam||"")).localeCompare(String(a.tanggal)+String(a.jam||"")));
+    const ada=new Set(masuk.map(m=>m.id));
+    [...masukPilih].forEach(id=>{ if(!ada.has(id)) masukPilih.delete(id); });
+    masukGalat=""; masukSiap=true; renderNanti();
+  }, err=>{ masukGalat=pesanGalat(err); masukSiap=true; renderNanti(); });
+  unsubs.push(stop);
+}
+function trxIdMasuk(m){ return "e_"+m.id; }   /* id tetap: dua perangkat yang mencatat bersamaan menghasilkan transaksi yang sama */
+/* Tebak kategori dari transaksi lama dengan keterangan yang sama */
+function tebakKategori(ket){
+  const k=String(ket||"").trim().toLowerCase();
+  if(k){
+    for(let i=data.dompet.length-1;i>=0;i--){
+      const t=data.dompet[i];
+      if(String(t.keterangan||"").trim().toLowerCase()===k && trxCatNames().includes(t.kategori)) return t.kategori;
+    }
+  }
+  return trxCatNames().includes("Lainnya") ? "Lainnya" : trxCatNames()[0];
+}
+function katMasuk(m){ return (m.kategori && trxCatNames().includes(m.kategori)) ? m.kategori : tebakKategori(m.keterangan); }
+function toggleMasuk(id){ if(masukPilih.has(id)) masukPilih.delete(id); else masukPilih.add(id); render(); }
+function pilihSemuaMasuk(){
+  if(masukPilih.size===masuk.length) masukPilih.clear(); else masuk.forEach(m=>masukPilih.add(m.id));
+  render();
+}
+function renderKartuMasuk(){
+  if(!syncAktif()) return "";
+  if(masukGalat) return `<div class="card"><h3>Menunggu Konfirmasi</h3><div class="small" style="color:var(--warn)">${esc(masukGalat)}</div></div>`;
+  if(!masuk.length) return "";
+  const dipilih=masuk.filter(m=>masukPilih.has(m.id));
+  const totalPilih=dipilih.reduce((s,m)=>s+(Number(m.jumlah)||0),0);
+  const rows=masuk.map(m=>{
+    const kat=katMasuk(m), c=trxCfg(kat), on=masukPilih.has(m.id);
+    return `
+      <div class="trx masuk-item">
+        <div class="checkbox ${on?'checked':''}" role="checkbox" aria-checked="${on}" aria-label="Catat transaksi ini"
+             onclick="toggleMasuk('${esc(m.id)}')">${on?'✓':''}</div>
+        <div class="trx-icon" style="background:${c.bg}">${c.icon}</div>
+        <div class="trx-body" style="cursor:pointer" onclick="openMasukModal('${esc(m.id)}')">
+          <div class="trx-desc">${esc(m.keterangan||'(tanpa keterangan)')}</div>
+          <div class="trx-sub"><span style="color:${c.text}">${esc(kat)}</span> · ${esc(m.sumber||'Email')} · ${fmtDayShort(m.tanggal)}${m.jam?' '+esc(m.jam):''}</div>
+        </div>
+        <div class="trx-amt">${fmt(m.jumlah)}</div>
+        <button class="icon-btn" onclick="abaikanMasuk(['${esc(m.id)}'])" aria-label="Abaikan">✕</button>
+      </div>`;
+  }).join('');
+  return `
+    <div class="card masuk-card">
+      <div class="rekap-top"><h3 style="margin:0">Menunggu Konfirmasi</h3><span class="chip chip-baru">${masuk.length}</span></div>
+      <div class="small muted" style="margin:6px 0 4px">Dari email notifikasi transaksi. Ceklis yang benar pengeluaran Anda, lalu tekan Catat. Ketuk keterangannya untuk mengubah kategori atau nominal.</div>
+      ${rows}
+      <div class="week-actions section-gap" style="margin-bottom:0">
+        <button class="btn btn-line btn-sm" onclick="pilihSemuaMasuk()">${masukPilih.size===masuk.length?'Batal pilih semua':'Pilih semua'}</button>
+        ${dipilih.length && dipilih.length<masuk.length?`<button class="btn btn-line btn-sm" onclick="abaikanMasuk(masuk.filter(m=>!masukPilih.has(m.id)).map(m=>m.id))">Abaikan yang tidak diceklis</button>`:''}
+      </div>
+      <button class="btn btn-accent btn-full section-gap" onclick="catatMasuk()" ${dipilih.length?'':'disabled'}>
+        ${dipilih.length?`Catat ${dipilih.length} transaksi · ${fmt(totalPilih)}`:'Ceklis transaksi yang mau dicatat'}</button>
+    </div>`;
+}
+function catatMasuk(){
+  const dipilih=masuk.filter(m=>masukPilih.has(m.id));
+  if(!dipilih.length) return;
+  const ada=new Set(data.dompet.map(t=>String(t.id)));
+  dipilih.forEach(m=>{
+    const id=trxIdMasuk(m);
+    if(!ada.has(id)) data.dompet.push({id, tanggal:m.tanggal||dateKey(new Date()), keterangan:String(m.keterangan||"Transaksi").slice(0,120),
+      jumlah:Number(m.jumlah)||0, kategori:katMasuk(m)});
+  });
+  data.dompet.sort((a,b)=>String(a.tanggal).localeCompare(String(b.tanggal)));
+  save();
+  ubahStatusMasuk(dipilih.map(m=>m.id),"dicatat");
+  render();
+}
+function abaikanMasuk(ids){
+  const list=masuk.filter(m=>ids.includes(m.id)); if(!list.length) return;
+  const total=list.reduce((s,m)=>s+(Number(m.jumlah)||0),0);
+  konfirmasi({judul: list.length>1?`Abaikan ${list.length} transaksi?`:'Abaikan transaksi ini?', ya:'Abaikan',
+    pesan:(list.length===1?`<strong>${esc(list[0].keterangan||'')}</strong> — ${fmt(list[0].jumlah)}<br><br>`:`Total ${fmt(total)}.<br><br>`)
+      +'Tidak dicatat sebagai pengeluaran dan hilang dari antrean. Email aslinya tidak berubah. Kalau ternyata perlu, catat manual lewat ＋ Tambah Pengeluaran.'},
+    ()=>{ ubahStatusMasuk(list.map(m=>m.id),"diabaikan"); render(); });
+}
+function ubahStatusMasuk(ids,status){
+  const set=new Set(ids);
+  masuk=masuk.filter(m=>!set.has(m.id));
+  ids.forEach(id=>masukPilih.delete(id));
+  if(!syncAktif()) return;
+  ids.forEach(id=>tandaiAntre(fb.F.updateDoc(refMasuk(id), {status, diproses:fb.F.serverTimestamp(),
+    ...(status==="dicatat"?{trx:"e_"+id}:{})})));
+}
+function openMasukModal(id){
+  const m=masuk.find(x=>x.id===id); if(!m) return;
+  modalState={type:'masuk',id};
+  const kat=katMasuk(m);
+  const opts=trxCatNames().map(c=>`<option ${c===kat?'selected':''}>${esc(c)}</option>`).join('');
+  openModal(`
+    <h3>Periksa Transaksi</h3>
+    <div class="small muted" style="margin-bottom:12px">Dari ${esc(m.sumber||'email')}${m.subjek?` · “${esc(m.subjek)}”`:''}</div>
+    <div class="field"><span class="field-label">Tanggal</span><input type="date" id="ms-tanggal" value="${esc(m.tanggal||'')}" /></div>
+    <div class="field"><span class="field-label">Keterangan</span><input type="text" id="ms-ket" value="${esc(m.keterangan||'')}" /></div>
+    <div class="field" style="margin-bottom:4px"><span class="field-label">Jumlah</span>
+      <div class="rp-wrap"><span class="rp-prefix">Rp</span>
+        <input type="text" id="ms-jumlah" class="rp-input num" inputmode="numeric" value="${Number(m.jumlah||0).toLocaleString('id-ID')}" oninput="formatRupiahGoal(this,'ms-hint')" /></div></div>
+    <div class="dur-hint" id="ms-hint">${m.jumlah?terbilangSingkat(m.jumlah):'&nbsp;'}</div>
+    <div class="field"><span class="field-label">Kategori</span><select id="ms-kat">${opts}</select></div>
+    <div class="small muted">Perubahan disimpan di antrean. Transaksi baru masuk Dompet setelah diceklis lalu dicatat.</div>
+    <div class="modal-actions section-gap">
+      <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button class="btn btn-accent" onclick="simpanMasukModal()">Simpan</button>
+    </div>`);
+}
+function simpanMasukModal(){
+  const m=masuk.find(x=>x.id===modalState.id); if(!m){ closeModal(); return; }
+  const isi={tanggal:document.getElementById("ms-tanggal").value, keterangan:document.getElementById("ms-ket").value.trim(),
+    jumlah:parseRupiah(document.getElementById("ms-jumlah").value), kategori:document.getElementById("ms-kat").value};
+  if(!isi.tanggal){ alert("Tanggal belum diisi."); return; }
+  if(!isi.keterangan){ alert("Keterangan belum diisi."); return; }
+  if(!isi.jumlah){ alert("Jumlah harus lebih dari 0."); return; }
+  Object.assign(m,isi);
+  if(syncAktif()) tandaiAntre(fb.F.updateDoc(refMasuk(m.id), isi));
+  closeModal(); render();
+}
+
 /* ---------- DATA ---------- */
 function infoCadanganOtomatis(){
   try{
@@ -2151,9 +2308,11 @@ function renderDataTab(){
     <div class="card">
       <h3>Cadangkan ke Berkas</h3>
       <div class="small muted" style="margin-bottom:10px">Cara paling aman sebelum update besar atau ganti HP. Berkasnya tersimpan di folder Download.</div>
-      <button class="btn btn-accent btn-full" onclick="unduhCadangan()">Unduh berkas cadangan</button>
-      <input type="file" id="file-restore" accept="application/json,.json" style="display:none" onchange="muatBerkasCadangan(event)" />
-      <button class="btn btn-ghost btn-full section-gap" onclick="document.getElementById('file-restore').click()">Pulihkan dari berkas</button>
+      <button class="btn btn-accent btn-full" onclick="unduhExcel()">Unduh Excel (.xlsx)</button>
+      <div class="small muted" style="margin:6px 0 0">Bisa dibuka di Excel, Google Sheets, atau Numbers: transaksi, anggaran, cicilan, target, dan jadwal dalam tabel terpisah. Berkas yang sama bisa dipakai untuk memulihkan.</div>
+      <button class="btn btn-line btn-full section-gap" onclick="unduhCadangan()">Unduh JSON (.json)</button>
+      <input type="file" id="file-restore" accept=".json,.xlsx,application/json,${XL_MIME}" style="display:none" onchange="muatBerkasCadangan(event)" />
+      <button class="btn btn-ghost btn-full section-gap" onclick="document.getElementById('file-restore').click()">Pulihkan dari berkas (.xlsx atau .json)</button>
     </div>
 
     <div class="card">
@@ -2175,6 +2334,289 @@ function renderDataTab(){
       <div class="row"><span class="name">Meeting dari kalender (${kal.sumber.length} kalender)</span><span class="val num">${kal.events.length}</span></div>
     </div>`;
 }
+/* ================= CADANGAN EXCEL (.xlsx) =================
+   Dibuat langsung di perangkat tanpa pustaka luar (jalan juga saat offline).
+   Sheet yang terlihat ditata supaya mudah dibaca orang. Untuk pemulihan, berkas
+   juga membawa salinan lengkap isi app di sheet tersembunyi "_data", jadi hasil
+   pemulihan dari Excel sama persis dengan pemulihan dari .json. */
+const XL_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const XL_PENANDA = "MY-JOURNEY-DATA v1";
+/* indeks gaya di styles.xml */
+const XS = {judul:1, kepala:2, rp:3, tgl:4, bln:5, pct:6, bungkus:7, rpTebal:8, tebal:9, redup:10};
+
+/* ---------- zip (tanpa kompresi) ---------- */
+const _crcTabel = (()=>{ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c = c&1 ? 0xEDB88320^(c>>>1) : c>>>1; t[n]=c>>>0; } return t; })();
+function crc32(u8){ let c=0xFFFFFFFF; for(let i=0;i<u8.length;i++) c=_crcTabel[(c^u8[i])&0xFF]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+function zipBuat(berkas){
+  const enc=new TextEncoder(), lokal=[], pusat=[]; let posisi=0;
+  const d=new Date(), waktuDos=(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1),
+        tglDos=((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate();
+  berkas.forEach(f=>{
+    const nama=enc.encode(f.nama), isi=typeof f.isi==="string"?enc.encode(f.isi):f.isi, crc=crc32(isi);
+    const h=new DataView(new ArrayBuffer(30));
+    h.setUint32(0,0x04034b50,true); h.setUint16(4,20,true); h.setUint16(6,0x0800,true); h.setUint16(8,0,true);
+    h.setUint16(10,waktuDos,true); h.setUint16(12,tglDos,true); h.setUint32(14,crc,true);
+    h.setUint32(18,isi.length,true); h.setUint32(22,isi.length,true); h.setUint16(26,nama.length,true); h.setUint16(28,0,true);
+    lokal.push(new Uint8Array(h.buffer),nama,isi);
+    const c=new DataView(new ArrayBuffer(46));
+    c.setUint32(0,0x02014b50,true); c.setUint16(4,20,true); c.setUint16(6,20,true); c.setUint16(8,0x0800,true); c.setUint16(10,0,true);
+    c.setUint16(12,waktuDos,true); c.setUint16(14,tglDos,true); c.setUint32(16,crc,true);
+    c.setUint32(20,isi.length,true); c.setUint32(24,isi.length,true); c.setUint16(28,nama.length,true);
+    c.setUint32(42,posisi,true);
+    pusat.push(new Uint8Array(c.buffer),nama);
+    posisi+=30+nama.length+isi.length;
+  });
+  const ukPusat=pusat.reduce((s,x)=>s+x.length,0);
+  const e=new DataView(new ArrayBuffer(22));
+  e.setUint32(0,0x06054b50,true); e.setUint16(8,berkas.length,true); e.setUint16(10,berkas.length,true);
+  e.setUint32(12,ukPusat,true); e.setUint32(16,posisi,true);
+  const bagian=[...lokal,...pusat,new Uint8Array(e.buffer)];
+  const out=new Uint8Array(bagian.reduce((s,x)=>s+x.length,0)); let p=0;
+  bagian.forEach(x=>{ out.set(x,p); p+=x.length; });
+  return out;
+}
+/* Membaca zip, termasuk yang sudah disimpan ulang oleh Excel (terkompresi) */
+async function zipBaca(buf){
+  const u8=new Uint8Array(buf), dv=new DataView(u8.buffer,u8.byteOffset,u8.byteLength), dec=new TextDecoder();
+  let eocd=-1;
+  for(let i=u8.length-22;i>=Math.max(0,u8.length-66000);i--){ if(dv.getUint32(i,true)===0x06054b50){ eocd=i; break; } }
+  if(eocd<0) throw new Error("Berkas bukan Excel (.xlsx) yang valid.");
+  const n=dv.getUint16(eocd+10,true); let p=dv.getUint32(eocd+16,true);
+  const hasil={};
+  for(let k=0;k<n;k++){
+    if(dv.getUint32(p,true)!==0x02014b50) throw new Error("Isi berkas Excel rusak.");
+    const metode=dv.getUint16(p+10,true), ukZip=dv.getUint32(p+20,true),
+          pjNama=dv.getUint16(p+28,true), pjExtra=dv.getUint16(p+30,true), pjKom=dv.getUint16(p+32,true), off=dv.getUint32(p+42,true);
+    const nama=dec.decode(u8.subarray(p+46,p+46+pjNama));
+    const awal=off+30+dv.getUint16(off+26,true)+dv.getUint16(off+28,true);
+    hasil[nama]={metode, isi:u8.subarray(awal,awal+ukZip)};
+    p+=46+pjNama+pjExtra+pjKom;
+  }
+  return {
+    ada:nama=>!!hasil[nama],
+    teks: async nama=>{
+      const f=hasil[nama]; if(!f) return null;
+      if(f.metode===0) return dec.decode(f.isi);
+      if(f.metode!==8) throw new Error("Format kompresi berkas tidak dikenal.");
+      if(typeof DecompressionStream==="undefined") throw new Error("Browser ini belum bisa membuka berkas Excel yang sudah disimpan ulang. Perbarui iOS/browser, atau pakai cadangan .json.");
+      const s=new Blob([f.isi]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+      return await new Response(s).text();
+    },
+  };
+}
+
+/* ---------- penulis xlsx ---------- */
+function xmlAman(s){
+  return String(s==null?"":s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g,"")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function kolomHuruf(i){ let s=""; i++; while(i>0){ const m=(i-1)%26; s=String.fromCharCode(65+m)+s; i=Math.floor((i-1)/26); } return s; }
+/* "YYYY-MM-DD" atau "YYYY-MM" → nomor seri tanggal Excel */
+function seriExcel(s){
+  const m=/^(\d{4})-(\d{2})(?:-(\d{2}))?/.exec(String(s||"")); if(!m) return null;
+  return (Date.UTC(+m[1],+m[2]-1,+(m[3]||1))-Date.UTC(1899,11,30))/86400000;
+}
+function selXml(v,ref){
+  if(v==null || v==="") return "";
+  const o=(typeof v==="object") ? v : {v};
+  const s=o.s?` s="${o.s}"`:"";
+  if(o.v==null || o.v==="") return o.s?`<c r="${ref}"${s}/>`:"";
+  if(typeof o.v==="number" && isFinite(o.v)) return `<c r="${ref}"${s}><v>${o.v}</v></c>`;
+  return `<c r="${ref}"${s} t="inlineStr"><is><t xml:space="preserve">${xmlAman(o.v)}</t></is></c>`;
+}
+function sheetXml(sh,aktif){
+  const baris=sh.rows.map((r,i)=>`<row r="${i+1}"${sh.tinggi&&sh.tinggi[i]?` ht="${sh.tinggi[i]}" customHeight="1"`:''}>${r.map((v,j)=>selXml(v,kolomHuruf(j)+(i+1))).join("")}</row>`).join("");
+  const kunci=sh.kunci?`<pane ySplit="${sh.kunci}" topLeftCell="A${sh.kunci+1}" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A${sh.kunci+1}" sqref="A${sh.kunci+1}"/>`:"";
+  const cols=sh.cols&&sh.cols.length?`<cols>${sh.cols.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("")}</cols>`:"";
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheetViews><sheetView workbookViewId="0"${aktif?' tabSelected="1"':''}${sh.tanpaGaris?' showGridLines="0"':''}>${kunci}</sheetView></sheetViews>
+<sheetFormatPr defaultRowHeight="15"/>${cols}<sheetData>${baris}</sheetData>${sh.saring?`<autoFilter ref="${sh.saring}"/>`:''}
+</worksheet>`;
+}
+const XL_GAYA = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="3"><numFmt numFmtId="164" formatCode="&quot;Rp&quot;\\ #,##0"/><numFmt numFmtId="165" formatCode="d\\ mmm\\ yyyy"/><numFmt numFmtId="166" formatCode="mmm\\ yyyy"/></numFmts>
+<fonts count="4"><font><sz val="11"/><name val="Calibri"/><family val="2"/></font><font><b/><sz val="11"/><name val="Calibri"/><family val="2"/></font><font><b/><sz val="16"/><color rgb="FF173229"/><name val="Calibri"/><family val="2"/></font><font><sz val="10"/><color rgb="FF6B7A72"/><name val="Calibri"/><family val="2"/></font></fonts>
+<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFDEE6DD"/><bgColor indexed="64"/></patternFill></fill></fills>
+<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left/><right/><top/><bottom style="thin"><color rgb="FF9DB3A3"/></bottom><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="11">
+<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
+<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="left"/></xf>
+<xf numFmtId="166" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="left"/></xf>
+<xf numFmtId="9" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+<xf numFmtId="164" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/>
+<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="top"/></xf>
+<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+</cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+function xlsxBuat(sheets){
+  const ct=sheets.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("");
+  const filterNama=sheets.map((sh,i)=>sh.saring?`<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">'${sh.nama.replace(/'/g,"''")}'!$${sh.saring.replace(":",":$").replace(/(\d+)/g,"$$$1")}</definedName>`:"").join("");
+  const berkas=[
+    {nama:"[Content_Types].xml", isi:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${ct}</Types>`},
+    {nama:"_rels/.rels", isi:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
+    {nama:"xl/workbook.xml", isi:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView activeTab="0"/></bookViews><sheets>${sheets.map((sh,i)=>`<sheet name="${xmlAman(sh.nama)}" sheetId="${i+1}"${sh.sembunyi?' state="hidden"':''} r:id="rId${i+1}"/>`).join("")}</sheets>${filterNama?`<definedNames>${filterNama}</definedNames>`:''}</workbook>`},
+    {nama:"xl/_rels/workbook.xml.rels", isi:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((_,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join("")}<Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`},
+    {nama:"xl/styles.xml", isi:XL_GAYA},
+    ...sheets.map((sh,i)=>({nama:`xl/worksheets/sheet${i+1}.xml`, isi:sheetXml(sh,i===0)})),
+  ];
+  return zipBuat(berkas);
+}
+/* Tabel standar: baris judul tebal + terkunci + saringan */
+function tabelSheet(nama,kepala,isi,lebar){
+  const rows=[kepala.map(k=>({v:k,s:XS.kepala})),...isi];
+  return {nama, rows, cols:lebar, kunci:1, saring:isi.length?`A1:${kolomHuruf(kepala.length-1)}${rows.length}`:null};
+}
+
+/* ---------- isi buku kerja ---------- */
+function rpSel(n){ return {v:Number(n)||0, s:XS.rp}; }
+function tglSel(s){ const v=seriExcel(s); return v==null?{v:s||""}:{v,s:XS.tgl}; }
+function blnSel(mk){ const v=seriExcel(mk); return v==null?{v:mk||""}:{v,s:XS.bln}; }
+function bukuKerjaData(){
+  const d=data, M=d.budget.months||{};
+  /* Ringkasan bulanan: bulan anggaran + bulan yang punya transaksi */
+  const bulanSet=new Set(Object.keys(M));
+  d.dompet.forEach(t=>{ if(/^\d{4}-\d{2}/.test(t.tanggal||"")) bulanSet.add(String(t.tanggal).slice(0,7)); });
+  const bulan=[...bulanSet].sort().reverse();
+  const ringkas=bulan.map(mk=>{
+    const b=M[mk]; const keluar=b?(b.items||[]).reduce((s,i)=>s+(Number(i.amount)||0),0):null;
+    const inc=b?(Array.isArray(b.incomes)?b.incomes.reduce((s,x)=>s+(Number(x.amount)||0),0):Number(b.income)||0):null;
+    const nyata=pengeluaranBulan(mk);
+    const nPos=b?(b.items||[]).length:0, nCek=b?(b.items||[]).filter(it=>b.cek&&b.cek[it.id]).length:0;
+    return [blnSel(mk), b?rpSel(inc):"", b?rpSel(keluar):"", b?rpSel(inc-keluar):"", rpSel(nyata), b?rpSel(keluar-nyata):"", b&&nPos?`${nCek} dari ${nPos}`:""];
+  });
+  const trx=d.dompet.slice().sort((a,b)=>String(b.tanggal).localeCompare(String(a.tanggal)))
+    .map(t=>[tglSel(t.tanggal), t.keterangan||"", t.kategori||"", rpSel(t.jumlah)]);
+  const angg=[];
+  Object.keys(M).sort().reverse().forEach(mk=>{
+    const b=M[mk];
+    const incs=Array.isArray(b.incomes)?b.incomes:(Number(b.income)?[{name:"Gaji",amount:b.income}]:[]);
+    incs.forEach(x=>angg.push([blnSel(mk),"Income",x.name||"",rpSel(x.amount),""]));
+    (b.items||[]).forEach(it=>angg.push([blnSel(mk),"Pengeluaran",it.name||"",rpSel(it.amount),(b.cek&&b.cek[it.id])?"Sudah":"Belum"]));
+  });
+  const cic=[];
+  (d.cicilan||[]).forEach(c=>(c.tahap||[]).forEach((t,i)=>cic.push([c.name||"",t.label||`Tahap ${i+1}`,blnSel(t.dari),blnSel(t.sampai),Number(t.bulan)||0,rpSel(t.amount),rpSel((Number(t.bulan)||0)*(Number(t.amount)||0))])));
+  const tgt=(d.goals||[]).map((g,i)=>[i+1,g.name||"",rpSel(g.current),g.target?rpSel(g.target):"",g.target?{v:Math.min(1,(Number(g.current)||0)/g.target),s:XS.pct}:"",g.date?tglSel(g.date):"",g.note||""]);
+  const tugas=[], tMinggu=[];
+  Object.keys(d.plan.weeks||{}).sort().reverse().forEach(wk=>{
+    const w=d.plan.weeks[wk]||{};
+    (w.tasks||[]).slice().sort((a,b)=>(String(a.date)+(a.start||"")).localeCompare(String(b.date)+(b.start||""))).forEach(t=>{
+      const kt=taskCatById(t.kat);
+      tugas.push([tglSel(t.date),t.date?DAY_NAMES[parseDate(t.date).getDay()]:"",t.start||"",t.end||"",t.name||"",catById(t.cat).name,kt?kt.name:"",t.prio||"",t.done?"Selesai":"Belum"]);
+    });
+    (w.goals||[]).forEach((g,i)=>tMinggu.push([tglSel(wk),i+1,g.name||"",g.done?"Tercapai":"Belum"]));
+  });
+  const rutin=(d.plan.recurring||[]).map(r=>{
+    const kt=taskCatById(r.kat), st=statusRule(r);
+    const hari=(r.days||[]).slice().sort((a,b)=>((a+6)%7)-((b+6)%7)).map(x=>DAY_SHORT[x]).join(", ");
+    const fq=freqText(r);
+    return [r.name||"",hari,fq.charAt(0).toUpperCase()+fq.slice(1),r.start&&r.end?`${r.start}–${r.end}`:"",catById(r.cat).name,kt?kt.name:"",r.prio||"",
+      [r.mulai?`mulai ${fmtDate(r.mulai)}`:"",r.sampai?`s.d. ${fmtDate(r.sampai)}`:""].filter(Boolean).join(" ")||"seterusnya", st?st.teks:"Aktif"];
+  });
+  const ide=(d.plan.backlog||[]).map(b=>{ const kt=taskCatById(b.kat); return [b.name||"",b.cat?catById(b.cat).name:"",b.prio||"",kt?kt.name:""]; });
+
+  const s=sesi(), sekarang=new Date();
+  const daftar=[
+    ["Ringkasan Bulanan","Income, rencana keluar, free uang, dan pengeluaran tercatat per bulan"],
+    ["Target","Target besar dan progresnya"],
+    ["Cicilan","Semua cicilan dan tahapannya"],
+    ["Anggaran","Income dan pos pengeluaran tiap bulan, termasuk tanda sudah dialokasikan"],
+    ["Transaksi","Semua pengeluaran di Dompet, terbaru di atas"],
+    ["Jadwal","Tugas yang dijadwalkan manual (rutinitas dan meeting kalender tidak ikut)"],
+    ["Target Mingguan","Target per minggu"],
+    ["Rutinitas","Aturan tugas berulang"],
+    ["Bak Ide","Isi Bak Ide & Nanti"],
+  ];
+  const petunjuk={nama:"Petunjuk", tanpaGaris:true, cols:[24,90], rows:[
+    [{v:"My Journey — Cadangan Data",s:XS.judul}],
+    [],
+    [{v:"Dibuat",s:XS.tebal}, sekarang.toLocaleString("id-ID",{day:"numeric",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"})],
+    [{v:"Versi app",s:XS.tebal}, APP_VERSION],
+    ...(s&&s.email?[[{v:"Akun",s:XS.tebal}, s.email]]:[]),
+    [{v:"Isi",s:XS.tebal}, `${d.dompet.length} transaksi · ${Object.keys(M).length} bulan anggaran · ${(d.goals||[]).length} target · ${Object.keys(d.plan.weeks||{}).length} minggu jadwal`],
+    [],
+    [{v:"Sheet",s:XS.kepala},{v:"Isinya",s:XS.kepala}],
+    ...daftar.map(x=>[{v:x[0],s:XS.tebal},x[1]]),
+    [],
+    [{v:"Cara memulihkan",s:XS.tebal},{v:"Buka My Journey → menu Data → Pulihkan dari berkas → pilih berkas ini. Transaksi digabung dengan yang sudah ada; anggaran, cicilan, target, dan jadwal diganti isi berkas.",s:XS.bungkus}],
+    [{v:"Penting",s:XS.tebal},{v:"Berkas ini untuk dibaca. Mengubah angka di sheet-sheet di atas TIDAK ikut terpulihkan — pemulihan memakai salinan lengkap di sheet tersembunyi \"_data\". Jangan hapus sheet itu.",s:XS.bungkus}],
+  ], tinggi:{[8+(s&&s.email?1:0)+daftar.length]:48,[9+(s&&s.email?1:0)+daftar.length]:48}};
+  /* salinan lengkap untuk pemulihan, dipotong per sel (batas Excel 32.767 karakter) */
+  const json=JSON.stringify(d), potong=[];
+  for(let i=0;i<json.length;i+=30000) potong.push([json.slice(i,i+30000)]);
+  return [
+    tabelSheet("Ringkasan Bulanan",["Bulan","Income","Rencana keluar","Free uang","Tercatat di Dompet","Sisa rencana","Pos dialokasikan"],ringkas,[14,16,16,16,18,16,16]),
+    tabelSheet("Target",["Urutan","Target","Terkumpul","Target biaya","Progres","Tanggal target","Catatan"],tgt,[8,32,18,18,10,16,40]),
+    tabelSheet("Cicilan",["Cicilan","Tahap","Dari","Sampai","Lama (bulan)","Per bulan","Total tahap"],cic,[24,18,12,12,12,16,18]),
+    tabelSheet("Anggaran",["Bulan","Jenis","Nama","Jumlah","Dialokasikan"],angg,[14,14,34,16,14]),
+    tabelSheet("Transaksi",["Tanggal","Keterangan","Kategori","Jumlah"],trx,[14,42,16,16]),
+    tabelSheet("Jadwal",["Tanggal","Hari","Mulai","Selesai","Tugas","Jenis","Kategori","Prioritas","Status"],tugas,[14,10,8,8,40,14,14,11,10]),
+    tabelSheet("Target Mingguan",["Minggu mulai","Urutan","Target","Status"],tMinggu,[14,8,48,12]),
+    tabelSheet("Rutinitas",["Nama","Hari","Pengulangan","Jam","Jenis","Kategori","Prioritas","Berlaku","Status"],rutin,[30,22,26,13,14,14,11,28,20]),
+    tabelSheet("Bak Ide",["Ide","Jenis","Prioritas","Kategori"],ide,[50,14,11,14]),
+    petunjuk,
+    {nama:"_data", sembunyi:true, cols:[100], rows:[[XL_PENANDA],[`versi ${APP_VERSION} · ${sekarang.toISOString()}`],...potong]},
+  ];
+}
+function unduhBerkas(isi,nama,mime){
+  const url=URL.createObjectURL(new Blob([isi],{type:mime}));
+  const a=document.createElement("a");
+  a.href=url; a.download=nama;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+}
+function unduhExcel(){
+  try{ unduhBerkas(xlsxBuat(bukuKerjaData()),`my-journey-${dateKey(new Date())}.xlsx`,XL_MIME); }
+  catch(e){ alert("Gagal membuat berkas Excel: "+((e&&e.message)||e)+"\n\nPakai cadangan .json sebagai gantinya."); }
+}
+
+/* ---------- pembaca xlsx (untuk pemulihan) ---------- */
+function xmlDok(teks){ return new DOMParser().parseFromString(teks,"application/xml"); }
+function atributId(el){
+  for(const a of el.attributes){ if(a.name==="r:id" || /:id$/.test(a.name)) return a.value; }
+  return el.getAttribute("id");
+}
+function teksSemua(el){ return [...el.getElementsByTagName("t")].map(t=>t.textContent).join(""); }
+async function jsonDariExcel(buf){
+  const z=await zipBaca(buf);
+  const wb=await z.teks("xl/workbook.xml");
+  if(!wb) throw new Error("Berkas bukan Excel (.xlsx) yang valid.");
+  const lembar=[...xmlDok(wb).getElementsByTagName("sheet")].find(s=>s.getAttribute("name")==="_data");
+  if(!lembar) throw new Error("Berkas Excel ini tidak berisi data My Journey (sheet tersembunyi \"_data\" tidak ada). Pastikan memakai berkas hasil unduhan dari menu Data.");
+  const rels=xmlDok(await z.teks("xl/_rels/workbook.xml.rels"));
+  const rel=[...rels.getElementsByTagName("Relationship")].find(r=>r.getAttribute("Id")===atributId(lembar));
+  if(!rel) throw new Error("Isi berkas Excel rusak.");
+  const tgt=rel.getAttribute("Target");
+  const jalur=tgt.startsWith("/") ? tgt.slice(1) : "xl/"+tgt.replace(/^\.\//,"");
+  const ss=await z.teks("xl/sharedStrings.xml");
+  const bersama=ss ? [...xmlDok(ss).getElementsByTagName("si")].map(teksSemua) : [];
+  const lembarXml=xmlDok(await z.teks(jalur));
+  const sel=[];
+  [...lembarXml.getElementsByTagName("c")].forEach(c=>{
+    const m=/^A(\d+)$/.exec(c.getAttribute("r")||""); if(!m) return;
+    const t=c.getAttribute("t"), v=c.getElementsByTagName("v")[0];
+    let isi="";
+    if(t==="s") isi=bersama[Number(v&&v.textContent)]||"";
+    else if(t==="inlineStr") isi=teksSemua(c);
+    else isi=v?v.textContent:"";
+    sel.push([Number(m[1]),isi]);
+  });
+  sel.sort((a,b)=>a[0]-b[0]);
+  if(!sel.length || sel[0][1]!==XL_PENANDA) throw new Error("Sheet \"_data\" di berkas ini bukan data My Journey.");
+  return sel.slice(2).map(x=>x[1]).join("");
+}
+
 function unduhCadangan(){
   try{
     const isi=JSON.stringify(data);
@@ -2189,6 +2631,15 @@ function unduhCadangan(){
 function muatBerkasCadangan(ev){
   const f=ev.target.files&&ev.target.files[0];
   if(!f) return;
+  if(/\.xlsx$/i.test(f.name) || f.type===XL_MIME){
+    f.arrayBuffer().then(jsonDariExcel).then(json=>{
+      const box=document.getElementById("import-box");
+      if(box) box.value=json;
+      terapkanImpor(json);
+    }).catch(e=>alert((e&&e.message)||"Berkas Excel tidak terbaca."))
+      .finally(()=>{ ev.target.value=""; });
+    return;
+  }
   const r=new FileReader();
   r.onload=()=>{
     const box=document.getElementById("import-box");
@@ -2264,16 +2715,21 @@ function renderAnggaran(){
   const mk=budgetMonth;
   const b=getBudget(mk);
   const iniBulanIni = mk===monthKeyOf(new Date());
-  const rows=b.items.map((it,i)=>`
-    <div class="row">
-      <input type="text" style="max-width:50%" value="${esc(it.name)}" oninput="updateBudgetItem(${i},'name',this.value)" />
-      <div class="rp-wrap" style="max-width:42%">
+  const rows=b.items.map((it,i)=>{
+    const ok=posSudah(b,it);
+    return `
+    <div class="row pos-row">
+      <div class="checkbox ${ok?'checked':''}" role="checkbox" aria-checked="${ok}" aria-label="Tandai sudah dialokasikan"
+           onclick="togglePos(${i})">${ok?'✓':''}</div>
+      <input type="text" class="pos-nama" value="${esc(it.name)}" oninput="updateBudgetItem(${i},'name',this.value)" />
+      <div class="rp-wrap pos-jml">
         <span class="rp-prefix" style="font-size:11px">Rp</span>
         <input type="text" class="rp-input num" style="font-size:16px !important;text-align:right" inputmode="numeric"
                value="${Number(it.amount).toLocaleString('id-ID')}" oninput="updateBudgetAmount(${i},this)" />
       </div>
-      <button class="icon-btn" onclick="removeBudgetItem(${i})">✕</button>
-    </div>`).join('');
+      <button class="icon-btn" onclick="removeBudgetItem(${i})" aria-label="Hapus pos">✕</button>
+    </div>`;
+  }).join('');
   const out=totalOutcome(mk), free=freeUang(mk);
   const terpakai=pengeluaranBulan(mk);
 
@@ -2304,7 +2760,9 @@ function renderAnggaran(){
       <div class="small muted section-gap">Angka bulan ini saja. Bulan lain bisa diisi berbeda — misalnya bulan THR, bonus, atau hasil kos-kosan.</div>
     </div>
 
-    <div class="card"><h3>Pos Pengeluaran</h3>${rows}
+    <div class="card"><h3>Pos Pengeluaran</h3>
+      ${b.items.length?`<div id="pos-ringkas">${ringkasanPos(b)}</div>`:''}
+      ${rows}
       <button class="btn btn-ghost btn-full section-gap" onclick="addBudgetItem()">+ Tambah pos</button>
     </div>
 
@@ -2318,6 +2776,30 @@ function renderAnggaran(){
       <div class="row"><span class="name">Rencana keluar</span><span class="val num">${fmt(out)}</span></div>
       <div class="row"><span class="name">Tercatat di Dompet</span><span class="val num">${fmt(terpakai)}</span></div>
       <div class="small muted section-gap">Dompet mencatat pengeluaran harian; angka di sini belum tentu mencakup pos otomatis seperti KPR atau asuransi.</div>
+    </div>`;
+}
+/* ---------- ceklis "sudah dialokasikan" per pos ----------
+   Disimpan per bulan di b.cek (id pos → true). Bulan baru mulai tanpa ceklis. */
+function posSudah(b,it){ return !!(b.cek && it && b.cek[it.id]); }
+function togglePos(i){
+  const b=getBudget(budgetMonth); const it=b.items[i]; if(!it) return;
+  if(!it.id) it.id=uid('b');
+  if(!b.cek) b.cek={};
+  if(b.cek[it.id]) delete b.cek[it.id]; else b.cek[it.id]=true;
+  delete b.warisan; save(); render();
+}
+function ringkasanPos(b){
+  const total=b.items.reduce((s,it)=>s+(Number(it.amount)||0),0);
+  const sudah=b.items.filter(it=>posSudah(b,it));
+  const nSudah=sudah.reduce((s,it)=>s+(Number(it.amount)||0),0);
+  const sisaPos=b.items.length-sudah.length;
+  const pct=total?Math.min(100,Math.round(nSudah/total*100)):(sudah.length&&!sisaPos?100:0);
+  return `
+    <div class="pos-ringkas">
+      <div class="small"><strong>Sudah dialokasikan</strong> · ${sudah.length} dari ${b.items.length} pos</div>
+      <div class="num" style="font-size:15px;font-weight:600;margin-top:3px">${fmt(nSudah)}<span class="small muted" style="font-weight:500"> dari ${fmt(total)}</span></div>
+      <div class="progress-track"><div class="progress-fill" style="width:${pct}%;background:var(--good)"></div></div>
+      <div class="small muted">${sisaPos?`Belum: ${sisaPos} pos · ${fmt(total-nSudah)}`:'Semua pos sudah dialokasikan ✓'}</div>
     </div>`;
 }
 function updateIncomeName(i,v){
@@ -2357,6 +2839,8 @@ function refreshBudgetStats(){
   if(f) f.textContent=fmtShort(freeUang(budgetMonth));
   const inc=document.getElementById("stat-income");
   if(inc) inc.textContent=fmt(getBudget(budgetMonth).income);
+  const pr=document.getElementById("pos-ringkas");
+  if(pr) pr.innerHTML=ringkasanPos(getBudget(budgetMonth));
 }
 function addBudgetItem(){
   const b=getBudget(budgetMonth); b.items.push({id:uid('b'),name:'Pos baru',amount:0}); delete b.warisan; save(); render();
@@ -2366,7 +2850,9 @@ function removeBudgetItem(i){
   const b=getBudget(budgetMonth); const it=b.items[i]; if(!it) return;
   konfirmasi({judul:'Hapus pos pengeluaran ini?',
     pesan:`<strong>${esc(it.name)}</strong> — ${fmt(it.amount)}<br><br>Hanya dihapus dari anggaran ${fmtMonth(budgetMonth)}. Bulan lain tidak terpengaruh.`},
-    ()=>{ const bb=getBudget(budgetMonth); bb.items.splice(i,1); delete bb.warisan; save(); render(); });
+    ()=>{ const bb=getBudget(budgetMonth); const hapus=bb.items.splice(i,1)[0];
+          if(hapus && bb.cek) delete bb.cek[hapus.id];
+          delete bb.warisan; save(); render(); });
 }
 
 /* ---------- CICILAN ---------- */
@@ -3326,7 +3812,7 @@ const FB_VER    = "10.12.2";
 const SESI_KEY  = "my-journey-sesi";
 const SNAP_KEY  = "my-journey-cermin";
 const PEMILIK_KEY = "my-journey-pemilik";   /* UID pemilik isi localStorage saat ini */
-const MAP_DALAM = new Set(["pos","inc","tasks","wg","dayNotes","recDone","recSkip","mtg"]);
+const MAP_DALAM = new Set(["pos","inc","tasks","wg","dayNotes","recDone","recSkip","mtg","cek"]);
 
 let fb = null;
 let unsubs = [];
@@ -3365,6 +3851,7 @@ function bersihkanLokal(){
   }catch(e){}
   cermin={}; antre=0; adaGalat="";
   kal=kalKosong(); kalLihat={}; kalRahasia=null; kalKunciTerakhir=""; kalGalatAkses="";
+  masuk=[]; masukPilih=new Set(); masukGalat=""; masukSiap=false;
   data=structuredClone(DEFAULT_DATA);
   simpanTanpaTanda();
 }
@@ -3376,7 +3863,12 @@ function keAnggaran(b){
   (b.items||[]).forEach(it=>{ ord.push(it.id); pos[it.id]={n:it.name||"",a:Number(it.amount)||0}; });
   (b.incomes||[]).forEach(it=>{ incOrd.push(it.id); inc[it.id]={n:it.name||"",a:Number(it.amount)||0}; });
   /* warisan selalu ditulis (true/false): field tingkat atas tidak pernah dihapus saat sinkron */
-  return {income:Number(b.income)||0, ord, pos, incOrd, inc, warisan:!!b.warisan};
+  const o={income:Number(b.income)||0, ord, pos, incOrd, inc, warisan:!!b.warisan};
+  /* cek = ceklis pos yang sudah dialokasikan (4.0). Map terpisah, bukan di dalam pos,
+     supaya versi lama yang menulis ulang pos tidak menghapus ceklisnya.
+     Baru ditulis setelah ada ceklis pertama di bulan itu — bulan lain tidak ikut berubah. */
+  if(b.cek && typeof b.cek==="object") o.cek=b.cek;
+  return o;
 }
 function dariAnggaran(d){
   const ord = Array.isArray(d.ord) ? d.ord : Object.keys(d.pos||{});
@@ -3388,6 +3880,7 @@ function dariAnggaran(d){
   }
   pastikanIncomes(o);   /* dokumen lama tanpa sumber → jadi satu sumber "Gaji" */
   if(d.warisan) o.warisan=true;
+  if(d.cek && typeof d.cek==="object") o.cek=d.cek;
   return o;
 }
 function keMinggu(w){
@@ -3674,6 +4167,7 @@ async function mulaiSinkron(uidLogin,email,pertamaKali){
   await pasangPendengar();
   faseAwal=false;
   pasangPendengarKalender();
+  pasangPendengarMasuk();
   simpanTanpaTanda();
   dorongPerubahan();
   syncMode="aman"; perbaruiStatus();
